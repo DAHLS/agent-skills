@@ -470,3 +470,18 @@
   entry). Consequence: the leap-aware `daysInMonth` pre-check is only
   skippable when ALL date input flows through `parse`; any direct
   `dateTime` construction still needs it.
+
+[sdl3] wrapper loads libSDL3 via {.dynlib}, not at link time (Nim 2.2.4, sdl3 1.1.0)
+  The sdl3 Nim wrapper pushes `{.push callConv: cdecl, dynlib: LibName.}`
+  (LibName = "libSDL3.so" on Linux) onto every imported SDL proc. Nim emits
+  runtime dlopen/dlsym per proc, so the BUILT binary has NO compile-time
+  dependency on libSDL3:
+    ldd ./star                         # only libm, libc — no libSDL3
+    nm -u ./star | grep -c SDL_        # 0
+    readelf -d ./star | grep NEEDED    # only libm.so.6, libc.so.6
+  Yet SDL calls work: dlopen("libSDL3.so") resolves at runtime via the
+  /lib64/libSDL3.so -> libSDL3.so.0 symlink (SDL3 dev package). Consequence:
+  a MISSING system SDL3 fails at RUNTIME (dlopen nil → importc stub raises
+  when the first SDL proc is called), NOT at link time — `nim c` succeeds
+  with no SDL3 installed. Don't mistake clean build + ldd-without-libSDL3
+  for a broken link; don't expect link-time errors to catch a missing SDL3.
