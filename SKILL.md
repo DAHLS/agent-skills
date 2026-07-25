@@ -17,11 +17,13 @@ Use when a task involves Nim: authoring `.nim` code, `nimble` packaging,
 compile flags, memory-management choices, C interop, or diagnosing compiler
 and runtime errors.
 
-**First, read `references/nim4friends_rules.md` in full** — it contains the
-reading, adding, and editing rules for the trap log. Then use those rules to
-access `references/nim4friends.txt` (the entries). Both ship in the **same repo
-as this skill**, so they are always present and current — do not assume the
-entries file is empty.
+>Read `references/nim4friends_rules.md` **in full**
+>**THIS IS A MANDATORY ACTION - READ `references/nim4friends_rules.md`**
+
+It contains the reading, adding, and editing rules
+for the trap log. Then use those rules to access `references/nim4friends.txt`
+(the entries). Both ship in the **same repo as this skill**, so they are
+always present and current — do not assume the entries file is empty.
 This skill does **not** repeat those entries; it complements them with
 decision-making and a way to learn *new* traps correctly.
 
@@ -293,7 +295,7 @@ Two compiler errors recur constantly and are easy to misread:
 
 ## Decision checklist
 
-- [ ] Read `nim4friends_rules.md` in full; accessed `nim4friends.txt` per its Reading rules (full if small, title-scan if large)?
+- [ ] Read `nim4friends_rules.md` in full - **NB MANDATORY ACTION**; accessed `nim4friends.txt` per its Reading rules (full if small, title-scan if large)?
 - [ ] Confirmed the target Nim version?
 - [ ] Verified any uncertain API against a primary source (docs/source/tests)?
 - [ ] Chosen `--mm` deliberately (not by accident)?
