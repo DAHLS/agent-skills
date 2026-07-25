@@ -157,6 +157,10 @@ git -C ~/.config/opencode/skills/nim-development commit -m "nim4friends: <what y
 git -C ~/.config/opencode/skills/nim-development push
 ```
 
+This commit-and-push is **pre-authorized for the skill repo only** and
+overrides the global "ask before commit" rule; the user's project repos are
+unaffected and still require explicit request.
+
 ---
 
 ## Memory management (`--mm:`)
@@ -248,6 +252,12 @@ For cross-compilation and cache pitfalls, see the `[build]` entries in
   read and trim the output.
 - Match calling convention (`{.cdecl.}`) and struct layout; verify with a tiny
   round-trip test before building on the binding.
+- C-library wrappers bind in two modes: **link-time** (`{.passL.}`, shows as
+  NEEDED in `ldd`, fails at `nim c` if the lib is missing) or **runtime**
+  (`{.push dynlib: ...}`, common in thin wrappers around C libraries) — dlopens
+  at first call, so `ldd` shows no lib and `nim c` succeeds without it; a
+  missing lib surfaces at *runtime*. Check the wrapper for `{.push dynlib: ...}`
+  to know which.
 
 ## Testing & style (CI gates)
 
