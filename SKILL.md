@@ -95,6 +95,20 @@ discover a new trap, record it — see [Recording lessons](#recording-lessons-ma
 This closes the loop: the memory file stays the trap log, this skill stays the
 method.
 
+### 6. Vet the library before committing to it
+
+Nim's ecosystem is small — usually one library covers a given task, and
+unmaintained libraries go stale quickly. So selection is a liveness and
+compatibility check, not a feature comparison:
+
+1. **Prefer recent activity and explicit Nim 2.x support.** Check the repo's
+   last commit and whether its docs mention your Nim version.
+2. **Prove it compiles on your version first.** `nim c` one of the library's
+   `examples/` as a throwaway before writing project code — `nimble install`
+   only confirms it downloaded, not that it builds for you.
+3. **Several wrappers for one C library?** Pick the maintained, version-matched
+   one; drift in the wrapper (not the C library) is the usual breakage.
+
 ---
 
 ## Recording lessons (MANDATORY)
@@ -308,6 +322,7 @@ Two compiler errors recur constantly and are easy to misread:
 - [ ] Read `nim4friends_rules.md` in full - **NB MANDATORY ACTION**; accessed `nim4friends.txt` per its Reading rules (full if small, title-scan if large)?
 - [ ] Confirmed the target Nim version?
 - [ ] Verified any uncertain API against a primary source (docs/source/tests)?
+- [ ] Vetted the chosen library's liveness + Nim-version fit (§6)?
 - [ ] Chosen `--mm` deliberately (not by accident)?
 - [ ] Picked the right concurrency model (I/O vs CPU)?
 - [ ] Selected build flags for this context (release keeps checks)?
