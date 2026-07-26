@@ -283,6 +283,13 @@
   throw. Use `defer` for file handles, connections, locks. Equivalent to
   Python's `with` / Rust's `Drop`.
 
+[idiom] `defer` is illegal at top level — wrap setup/teardown in a proc
+  Nim rejects `defer: ...` outside a proc/iterator with the compile error
+  "defer statement not supported at top level". So top-level init+cleanup
+  (e.g. `SDL_Init` … `defer: SDL_Quit()`) must live inside a `proc main()`
+  invoked from `when isMainModule:`. Extends the `defer`-on-exception-exit
+  entry above. (Nim 2.2.4)
+
 [idiom] `result = X` and `return Y` don't mix — `return` silently wins
   A proc's `result` variable is the implicit return (Nim creates it
   automatically; `result = X` sets it, `result.add(x)` appends to a `seq`
