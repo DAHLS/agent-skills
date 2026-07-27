@@ -660,11 +660,19 @@
    success set is {100, 101}; in a read loop,
    `if rc == 100: read row; elif rc == 101: break`.
 
- [idiom] `try:` needs an explicit colon before a multiline body (Nim 2.x)
-   `try` WITHOUT a trailing colon, immediately followed by an indented
-   statement (`for`, `echo`, ...) fails to parse:
-   "expected: ':', but got: 'keyword for'". Add the colon:
-     try:
-       for x in items: ...
-   (`try` / `except` / `finally` on the same structural line still work
-   without it, but the bare multiline-block form requires `try:`.)
+  [idiom] `try:` needs an explicit colon before a multiline body (Nim 2.x)
+    `try` WITHOUT a trailing colon, immediately followed by an indented
+    statement (`for`, `echo`, ...) fails to parse:
+    "expected: ':', but got: 'keyword for'". Add the colon:
+      try:
+        for x in items: ...
+    (`try` / `except` / `finally` on the same structural line still work
+    without it, but the bare multiline-block form requires `try:`.)
+
+  [db] stdlib `db_sqlite` was REMOVED from Nim 2.x stdlib (Nim 2.0+)
+    `import std/db_sqlite` fails with "cannot open file: std/db_sqlite".
+    The old db_* modules moved to the `db_connector` nimble package.
+    Fix: `nimble install db_connector` (or `db`, which depends on it) and
+    `import db_connector/db_sqlite`. The API (open/exec/getAllRows/sql,
+    `?` placeholders) is unchanged. Needs libsqlite3 at link time
+    (`ldconfig -p | grep sqlite3`); it is a link-time dep, not dynlib.
