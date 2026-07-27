@@ -616,3 +616,21 @@
    RUNTIME, not link time; ldd shows no SDL2. Note: on Fedora 44,
    libSDL2-2.0.so.0 is sdl2-compat (SDL2 API over SDL3), so runtime
    version queries report 2.32.x regardless of the wrapper's age.
+
+[http] `all` replaces `allFutures` in Nim 2.x (asyncfutures)
+  `allFutures` does not exist in Nim 2.2.4. The async futures module
+  provides `proc all*[T](futs: varargs[Future[T]]): auto` instead, which
+  also works with a single `seq[Future[T]]` argument. Compile error:
+  "undeclared identifier: 'allFutures'". Fix: import `std/asyncfutures`
+  and use `await all(futures)`.
+
+[http] `newAsyncHttpClient` has no `timeout` constructor parameter
+  `newAsyncHttpClient(timeout = 5000)` fails with "unknown named
+  parameter: timeout". The timeout is a mutable field, not a constructor
+  arg. Fix: set `client.timeout = 5000` after construction.
+
+[http] Shared `AsyncHttpClient` across concurrent async requests crashes
+  Reusing one `AsyncHttpClient` for concurrent `await` calls causes
+  socket conflicts — one coroutine's connection gets closed by another,
+  triggering asserts like "Cannot `recv` on a closed socket". Fix:
+  create a separate `newAsyncHttpClient()` per fetch coroutine.
