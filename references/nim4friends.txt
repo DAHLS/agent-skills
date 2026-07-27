@@ -539,3 +539,25 @@
   the receiver rehydrates with `parseJson(s)` on its own heap.
   Verified by minimal repro: 24 threads x 10 rounds — JsonNode channel
   segfaults, string channel passes.
+
+[threads] createThread corrupts a thread-arg tuple that contains an int field (Nim 2.2.4)
+  A worker `proc(args: tuple[ptr X; idx: int; path: string]) {.thread.}`
+  receives a CORRUPTED arg: inside the worker `args.idx` reads 0,
+  `args.path` is empty, `args.ptr` is nil -> nil deref SIGSEGV.
+  Symptom: worker prints garbage/zeroed args (first echo may even
+  show correct values, then later lines show zeroed fields). Verified by
+  minimal repro. Workaround: keep the thread-arg tuple to shapes that
+  marshal cleanly, e.g. `(ptr X; path: string; base: string)`
+  (ptr + strings only); if you need an index, pass a `ptr Slot` to
+  the worker's OWN slot instead of an int field.
+
+  CORRECTION (Nim 2.2.4): the "plain string channel works"
+  workaround only holds for a SINGLE sender. With >1 concurrent
+  sender (the exact "one worker thread per file" fan-out), BOTH
+  `Channel[string]` and `Channel[plainObjectWithString]` SIGSEGV on the
+  2nd concurrent `send` ("read from nil" in `sendImpl`, the deep-copy
+  into the channel's shared ring buffer is unsafe under concurrency).
+  Verified: 1 sender ok; 3 concurrent senders crash. So for fan-out
+  reads use `spawn`/`FlowVar` (std/threadpool) to return the string —
+  that transfers correctly under concurrency. (std/threadpool is itself
+  deprecated in 2.x; malebolgia is the maintained swap.)
