@@ -492,3 +492,18 @@
   when the first SDL proc is called), NOT at link time — `nim c` succeeds
   with no SDL3 installed. Don't mistake clean build + ldd-without-libSDL3
   for a broken link; don't expect link-time errors to catch a missing SDL3.
+
+[threads] Don't pass JsonNode (ref graphs) out of worker threads — SIGSEGV in addToSharedFreeList (Nim 2.2.4, --mm:orc)
+  Returning a parsed `JsonNode` from a worker thread to the main thread
+  crashes later when the main thread deallocates it, AFTER the worker
+  has exited: "SIGSEGV: Illegal storage access." with a traceback ending
+  `dealloc -> rawDealloc -> addToSharedFreeList` (alloc.nim). Happens
+  BOTH via a `ptr slot` written by the worker AND via
+  `Channel[JsonNode]` with `--deepcopy:on` — the deep copy is allocated
+  on the *sender's* heap, so recv still hands the main thread refs into
+  a dead thread's region. Plain `string` messages over `Channel[T]`
+  (including strings inside an object) are copied safely and work.
+  Fix: workers serialize (`$node`) and send the compact JSON string;
+  the receiver rehydrates with `parseJson(s)` on its own heap.
+  Verified by minimal repro: 24 threads x 10 rounds — JsonNode channel
+  segfaults, string channel passes.
