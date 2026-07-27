@@ -629,8 +629,42 @@
   parameter: timeout". The timeout is a mutable field, not a constructor
   arg. Fix: set `client.timeout = 5000` after construction.
 
-[http] Shared `AsyncHttpClient` across concurrent async requests crashes
-  Reusing one `AsyncHttpClient` for concurrent `await` calls causes
-  socket conflicts — one coroutine's connection gets closed by another,
-  triggering asserts like "Cannot `recv` on a closed socket". Fix:
-  create a separate `newAsyncHttpClient()` per fetch coroutine.
+ [http] Shared `AsyncHttpClient` across concurrent async requests crashes
+   Reusing one `AsyncHttpClient` for concurrent `await` calls causes
+   socket conflicts — one coroutine's connection gets closed by another,
+   triggering asserts like "Cannot `recv` on a closed socket". Fix:
+   create a separate `newAsyncHttpClient()` per fetch coroutine.
+
+ [exn] Custom catchable exceptions are value `object of CatchableError`, raised via `newException` (Nim 2.0+)
+   In Nim 2.0+, `CatchableError`/`Exception` are VALUE objects
+   (`CatchableError* = object of Exception`), not refs. So a custom
+   error type is `type DbError* = object of CatchableError` (value).
+   `newException(T, msg)` is defined as `(ref T)(msg: msg)`, so raise it
+   with `raise newException(DbError, msg)`. Two wrong forms both fail:
+   `type DbError = ref object of CatchableError` → "object constructor
+   needs an object type [ref ...]" (double ref), and
+   `raise DbError(msg: "x")` → "only a 'ref object' can be raised"
+   (can't raise a value object). Extends the `[exn]` "except
+   CatchableError" entry: that one is for catching, this one for throwing.
+
+ [footgun] sqlite3_step returns 100 (SQLITE_ROW) for a row, 101 (SQLITE_DONE) on completion
+   Wrapping the C SQLite API by hand: `sqlite3_step` returns 101
+   (`SQLITE_DONE`) after a successful INSERT/UPDATE (no result rows), and
+   100 (`SQLITE_ROW`) when a SELECT produced a row. A read loop written
+   `if rc == 101: read row; elif rc == 100: continue` is backwards —
+   it tries to read columns on a DONE step (all NULL → empty/garbage
+   rows) and skips real rows. Also, treating 101 as failure
+   (`if rc notin {0,100}: raise`) fires on EVERY successful INSERT, with
+   SQLite's "no more rows available" message (errmsg is NULL after
+   success, which Nim's `$()` prints as the nil-cstring string). Fix:
+   success set is {100, 101}; in a read loop,
+   `if rc == 100: read row; elif rc == 101: break`.
+
+ [idiom] `try:` needs an explicit colon before a multiline body (Nim 2.x)
+   `try` WITHOUT a trailing colon, immediately followed by an indented
+   statement (`for`, `echo`, ...) fails to parse:
+   "expected: ':', but got: 'keyword for'". Add the colon:
+     try:
+       for x in items: ...
+   (`try` / `except` / `finally` on the same structural line still work
+   without it, but the bare multiline-block form requires `try:`.)
