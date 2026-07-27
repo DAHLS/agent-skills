@@ -74,4 +74,5 @@ Titles are the awareness layer; bodies are the detail layer.
 | `[cli]` | CLI argument parsing |
 | `[nimble]` | nimble package manager |
 | `[sdl3]` | SDL3 bindings for Nim |
+| `[sdl2]` | SDL2 bindings for Nim (sdl2 nimble wrapper) |
 | `[threads]` | std/threads, std/threadpool, concurrency, GC across threads |

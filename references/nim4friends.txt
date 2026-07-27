@@ -483,9 +483,9 @@
   (LibName = "libSDL3.so" on Linux) onto every imported SDL proc. Nim emits
   runtime dlopen/dlsym per proc, so the BUILT binary has NO compile-time
   dependency on libSDL3:
-    ldd ./star                         # only libm, libc — no libSDL3
-    nm -u ./star | grep -c SDL_        # 0
-    readelf -d ./star | grep NEEDED    # only libm.so.6, libc.so.6
+    ldd ./binary                         # only libm, libc — no libSDL3
+    nm -u ./binary | grep -c SDL_        # 0
+    readelf -d ./binary | grep NEEDED    # only libm.so.6, libc.so.6
   Yet SDL calls work: dlopen("libSDL3.so") resolves at runtime via the
   /lib64/libSDL3.so -> libSDL3.so.0 symlink (SDL3 dev package). Consequence:
   a MISSING system SDL3 fails at RUNTIME (dlopen nil → importc stub raises
@@ -557,7 +557,62 @@
   `Channel[string]` and `Channel[plainObjectWithString]` SIGSEGV on the
   2nd concurrent `send` ("read from nil" in `sendImpl`, the deep-copy
   into the channel's shared ring buffer is unsafe under concurrency).
-  Verified: 1 sender ok; 3 concurrent senders crash. So for fan-out
-  reads use `spawn`/`FlowVar` (std/threadpool) to return the string —
-  that transfers correctly under concurrency. (std/threadpool is itself
-  deprecated in 2.x; malebolgia is the maintained swap.)
+   Verified: 1 sender ok; 3 concurrent senders crash. So for fan-out
+   reads use `spawn`/`FlowVar` (std/threadpool) to return the string —
+   that transfers correctly under concurrency. (std/threadpool is itself
+   deprecated in 2.x; malebolgia is the maintained swap.)
+
+[sdl2] bare `quit()` is ambiguous with `system.quit` (Nim 2.2.4, sdl2 2.0.5)
+   After `import sdl2`, a bare zero-arg `quit()` fails to compile:
+     Error: ambiguous call; both system.quit(errorcode: int)
+     [system.nim] and sdl2.quit() [sdl2.nim] match for: ()
+   because `system.quit(errorcode)` has a default arg, making it
+   callable with (). Fix: qualify the SDL shutdown: `sdl2.quit()`.
+   `quit("msg")` still resolves to `system.quit(string)` by arity —
+   only the zero-arg form collides.
+
+[sdl2] wrapper strips the SDL_ prefix and renames procs (Nim 2.2.4, sdl2 2.0.5)
+   The sdl2 nimble wrapper does NOT export C-style names:
+   `SDL_Init(...)` → "Error: undeclared identifier: 'SDL_Init'".
+   Map: SDL_Init→init, SDL_CreateWindow→createWindow(title,x,y,w,h,flags),
+   SDL_CreateRenderer→createRenderer(window,index,flags),
+   SDL_SetRenderDrawColor→setDrawColor, SDL_RenderClear→clear,
+   SDL_RenderPresent→present, SDL_PollEvent→pollEvent,
+   SDL_GetTicks→getTicks (returns uint32, unlike SDL3's uint64),
+   SDL_Quit→quit (see the quit-ambiguity entry). Events:
+   `ev.kind == QuitEvent`, not C's `ev.type`/`SDL_QUIT`. Never write
+   calls from C SDL2 docs — read the wrapper source for the real names.
+
+[sdl2] no SDL_RenderGeometry/SDL_Vertex in the wrapper; use sdl2/gfx (Nim 2.2.4, sdl2 2.0.5)
+   The wrapper predates SDL2 2.0.18 and never imports
+   SDL_RenderGeometry or SDL_Vertex (grep of the package: zero hits),
+   so SDL3-style filled-triangle geometry is unavailable. For filled
+   polygons use `import sdl2/gfx`:
+     filledPolygonRGBA(renderer, addr vx[0], addr vy[0], n, r, g, b, a)
+   which takes SEPARATE `ptr int16` vx/vy arrays (16-bit coords), not
+   an interleaved vertex struct; needs libSDL2_gfx at runtime (dynlib,
+   like the core lib). Alternative: hand-import SDL_RenderGeometry
+   with a matching SDL_Vertex layout if the system SDL2 is ≥ 2.0.18.
+
+[sdl2] SDL_Return/Bool32 are enums; bare `if init()` inverts C error checks (Nim 2.2.4, sdl2 2.0.5)
+   init returns SDL_Return (SdlError = -1, SdlSuccess = 0); pollEvent
+   returns Bool32 (False32/True32). C-style `init(...) != 0` fails
+   loudly: "Error: type mismatch ... [1] init(...): SDL_Return
+   [2] 0: int literal(0)". The silent trap: the wrapper defines
+   `converter toBool(SDL_Return) = some == SdlSuccess`, so a bare
+   `if init(INIT_VIDEO):` COMPILES and is true on SUCCESS — a C-habit
+   reading ("nonzero = error") silently inverts the check. Fix:
+   compare explicitly: `if init(INIT_VIDEO) != SdlSuccess:` and
+   `while pollEvent(ev) == True32:` (pollEvent in bool position is
+   safe: toBool(Bool32) maps False32/True32 as expected).
+
+[sdl2] LibName is a dynlib version pattern: runtime soname suffices, no -devel pkg (Nim 2.2.4, sdl2 2.0.5)
+   The wrapper's Linux LibName is a Nim dynlib pattern
+   ("libSDL2(|-2.0).so(|.0)"; gfx: "libSDL2_gfx(|-1.0).so(|.0)") that
+   matches the runtime soname libSDL2-2.0.so.0 — unlike the sdl3
+   wrapper's literal "libSDL3.so" (extends the [sdl3] dynlib entry).
+   So the runtime RPM alone suffices; no SDL2-devel .so symlink
+   needed. Same dlopen-at-first-call behavior: a missing lib fails at
+   RUNTIME, not link time; ldd shows no SDL2. Note: on Fedora 44,
+   libSDL2-2.0.so.0 is sdl2-compat (SDL2 API over SDL3), so runtime
+   version queries report 2.32.x regardless of the wrapper's age.
