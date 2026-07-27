@@ -490,8 +490,40 @@
   /lib64/libSDL3.so -> libSDL3.so.0 symlink (SDL3 dev package). Consequence:
   a MISSING system SDL3 fails at RUNTIME (dlopen nil → importc stub raises
   when the first SDL proc is called), NOT at link time — `nim c` succeeds
-  with no SDL3 installed. Don't mistake clean build + ldd-without-libSDL3
-  for a broken link; don't expect link-time errors to catch a missing SDL3.
+   with no SDL3 installed. Don't mistake clean build + ldd-without-libSDL3
+   for a broken link; don't expect link-time errors to catch a missing SDL3.
+
+[footgun] `stderr` is in `std/syncio`, not `std/stdio` (Nim 2.2.4)
+  `import std/stdio` fails: "Error: cannot open file: std/stdio".
+  `stderr`/`stdout`/`stdin` are declared in `std/syncio` (see
+  `syncio.nim`: `stderr* {.importc: "__stderrp"...}: File`).
+  Fix: `import std/syncio` (or just `import syncio`) for `stderr.writeLine`.
+
+[ambiguity] `std/strutils.normalize(s: string)` shadows a same-named proc
+  A module that does `import std/strutils` (or grouped `std/[...]`) and
+  also defines `proc normalize(node, schema)` gets `normalize(x, y)`
+  resolved to strutils' `normalize(s: string)` with a mismatch:
+  "Expected one of: func normalize(s: string): string". Fix: import only
+  the strutils procs you use
+  (`from std/strutils import endsWith, toLowerAscii, parseInt, parseFloat`)
+  so the module's `normalize` is the only one in scope.
+
+[idiom] a public proc needs a public forward declaration too (Nim 2.2.4)
+  If you add `*` to a proc that had a non-public forward stub
+  (`proc normalize(...)`), the build errors: "public implementation
+  'X' has non-public forward declaration at <line>". The forward stub
+  must also get `*` (`proc normalize*(...)`) — keep the stub and the
+  definition's export marker in sync.
+
+[build] `std/threadpool` is deprecated in Nim 2.x (still works)
+  `import threadpool` compiles but warns: "use the nimble packages
+  `malebolgia`, `taskpools` or `weave` instead; threadpool is deprecated".
+  It still works: `spawn fn(args)` returns `FlowVar[T]` read with `^fv`.
+  It also emits a benign "=destroy(fv.blob) can raise an unlisted
+  exception: Exception [Effect]" warning from its internals — safe to
+  ignore. Prefer `malebolgia` (maintained; `Master` + `awaitAll` +
+  `m.spawn`) for new code. Returning a struct containing a `JsonNode`
+  ref from `spawn` works under `--mm:orc` (ORC moves refs across threads).
 
 [threads] Don't pass JsonNode (ref graphs) out of worker threads — SIGSEGV in addToSharedFreeList (Nim 2.2.4, --mm:orc)
   Returning a parsed `JsonNode` from a worker thread to the main thread
