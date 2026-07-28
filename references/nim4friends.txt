@@ -759,3 +759,13 @@
   Verified against installed 2.2.4 httpclient.nim and by fetching a
   10 s-delay endpoint: cut at 5000 ms while a concurrent fast fetch
   still succeeded.
+
+[http] `HttpRequestError.msg` embeds a newline ("...\nAdditional info: ...") (Nim 2.2.4)
+  A failed `client.request(url)` (e.g. DNS resolution failure) raises
+  HttpRequestError whose msg is multi-line; literal output:
+    Invalid argument
+    Additional info: Name or service not known
+  Printing `e.msg` as a one-line CLI error breaks the format (the second
+  line lands on stdout/stderr without the `error:` prefix). Fix: collapse
+  before printing:
+    stderr.writeLine "error: " & e.msg.splitLines().join("; ")
