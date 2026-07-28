@@ -713,3 +713,14 @@
 [footgun] `srand` renamed to `randomize` in Nim 2.x
   `srand(seed)` fails: "undeclared identifier: 'srand'". Fix:
   `randomize(seed)` where seed is `int64`.
+
+[cli] `getopt` cannot capture a separate-token option value (Nim 2.2.4)
+  `for k,key,val in initOptParser().getopt():` yields `--field` with
+  `val=""` for `--field value` (the `value` arrives as a following
+  `cmdArgument`, not `val`). The standalone `getopt(cmdline,
+  shortNoVal=..., longNoVal=...)` iterator exists but does NOT accept
+  `shortWithVal`/`longWithVal` ("unknown named parameter: shortWithVal").
+  Fix: parse `commandLineParams()` manually, or require `--field=value`.
+  Also `httpCodeToName` is not exported by `std/httpcore`, and
+  `TimeoutError` is not a top-level std identifier (use `except
+  CatchableError` to also catch timeouts from `httpclient`).
