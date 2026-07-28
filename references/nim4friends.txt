@@ -721,21 +721,17 @@
   shortNoVal=..., longNoVal=...)` iterator exists but does NOT accept
   `shortWithVal`/`longWithVal` ("unknown named parameter: shortWithVal").
   Fix: parse `commandLineParams()` manually, or require `--field=value`.
-  Also `httpCodeToName` is not exported by `std/httpcore`, and
-  `TimeoutError` is not a top-level std identifier (use `except
-  CatchableError` to also catch timeouts from `httpclient`).
 
 [cli] parse `--opt value` (space form) by consuming the following `cmdArgument` (Nim 2.2.4)
   Extends the `[cli] getopt cannot capture a separate-token option value`
-  entry (717). `for k,key,val in getopt():` yields `--opt` with `val=""`
+  entry. `for k,key,val in getopt():` yields `--opt` with `val=""`
   and the value as the NEXT event as a `cmdArgument`. Instead of manual
   parsing, track a `pending` option name: when a value-expecting option has
   `val==""`, set `pending="opt"`; on the next `cmdArgument` assign `val=key`
   and clear `pending`. After the loop, if `pending!=""` error "requires a
   value". This gives `--output=x`, `--output x`, `-o x`, `-o=x` all working.
 
-[json] Parsing a numeric string field requires `std/strutils`; `parseInt` is not auto-imported
-  trap: reading a JSON number that may be stored as a string via `node.getStr.parseInt` errors with
-  `undeclared field: 'parseInt' for type system.string` because `parseInt` lives in `std/strutils`.
-  symptom: compile error on the `parseInt` call, even though `getStr` is from `std/json`.
-  fix: add `import std/strutils` (or `import std/parseutils` won't give `parseInt` — it is `strutils`).
+[footgun] `parseInt` on a string needs `std/strutils`; not auto-imported (Nim 2.2.4)
+  `node.getStr.parseInt` fails: "undeclared field: 'parseInt' for type
+  system.string" — `getStr` comes from `std/json`, but `parseInt` lives
+  in `std/strutils`. Fix: `import std/strutils`.
