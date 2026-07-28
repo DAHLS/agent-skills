@@ -187,6 +187,9 @@
   returns `Time`. If you also have a local proc named `toTime`, it can
   collide with the stdlib's `DateTime.toTime`; prefer distinct names
   like `mkTime` for test helpers.
+  Extends this entry: `getTime()` also returns `Time` directly;
+  `getTime().toTime()` fails: "Expected one of: proc toTime(dt: DateTime): Time".
+  Fix: `getTime().toUnix()` without the `.toTime()` call.
 
 [times] Parsing ISO-8601 with 'Z' suffix
   `parse("2021-07-12T17:33:59.420000Z", "yyyy-MM-dd'T'HH:mm:sszzz")`
@@ -706,3 +709,11 @@
   `run(asyncProc())` fails: "undeclared identifier: 'run'". Fix:
   `waitFor asyncProc()` from `std/asyncdispatch`. (`runForever` exists but blocks
   indefinitely; `waitFor` runs the event loop until the given Future completes.)
+
+[footgun] `rand` module renamed to `random` in Nim 2.x
+  `import rand` fails: "cannot open file: rand". Fix: `import random`.
+  The module lives at `lib/pure/random.nim`.
+
+[footgun] `srand` renamed to `randomize` in Nim 2.x
+  `srand(seed)` fails: "undeclared identifier: 'srand'". Fix:
+  `randomize(seed)` where seed is `int64`.
