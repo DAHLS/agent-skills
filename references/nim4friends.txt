@@ -630,7 +630,9 @@
 [http] `newAsyncHttpClient` has no `timeout` constructor parameter
   `newAsyncHttpClient(timeout = 5000)` fails with "unknown named
   parameter: timeout". The timeout is a mutable field, not a constructor
-  arg. Fix: set `client.timeout = 5000` after construction.
+  arg — but setting it is a no-op for async requests; see the
+  `AsyncHttpClient timeout field is a no-op on the async path` entry
+  for the working fix (`withTimeout`).
 
  [http] Shared `AsyncHttpClient` across concurrent async requests crashes
    Reusing one `AsyncHttpClient` for concurrent `await` calls causes
