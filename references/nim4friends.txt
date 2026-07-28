@@ -735,3 +735,27 @@
   `node.getStr.parseInt` fails: "undeclared field: 'parseInt' for type
   system.string" — `getStr` comes from `std/json`, but `parseInt` lives
   in `std/strutils`. Fix: `import std/strutils`.
+
+[footgun] `getMonoTime`/`MonoTime` live in `std/monotimes`, not `std/times` (Nim 2.2.4)
+  `let t0 = getMonoTime()` with only `import std/times` fails:
+  "Error: undeclared identifier: 'getMonoTime'" (spellSuggest offers
+  `getTime`). `Duration` and `inMilliseconds` are in times; the monotonic
+  clock type and getter are not. Fix:
+    import std/[monotimes, times]
+  Same trap class as split/strutils and commandLineParams/os.
+
+[http] AsyncHttpClient `timeout` field is a no-op on the async path; use `withTimeout` (Nim 2.2.4)
+  Extends the `newAsyncHttpClient has no timeout constructor parameter`
+  entry. Setting `client.timeout = 5000` compiles but does nothing for
+  async requests: `newAsyncHttpClient` sets `result.timeout = -1 # TODO`,
+  and `recvFull`'s async branch is `await client.socket.recv(sizeToRecv)`
+  — the timeout param is only passed to blocking `Socket.recv`. A hung
+  server stalls the coroutine forever. Fix: bound the whole request with
+  `asyncdispatch.withTimeout` (returns Future[bool]; false = timed out,
+  does NOT cancel the inner future):
+    let fut = fetchOne(url)
+    if await fut.withTimeout(5000): result = fut.read()
+    else: result = timeoutResult
+  Verified against installed 2.2.4 httpclient.nim and by fetching a
+  10 s-delay endpoint: cut at 5000 ms while a concurrent fast fetch
+  still succeeded.
