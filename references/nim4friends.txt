@@ -733,3 +733,9 @@
   `val==""`, set `pending="opt"`; on the next `cmdArgument` assign `val=key`
   and clear `pending`. After the loop, if `pending!=""` error "requires a
   value". This gives `--output=x`, `--output x`, `-o x`, `-o=x` all working.
+
+[json] Parsing a numeric string field requires `std/strutils`; `parseInt` is not auto-imported
+  trap: reading a JSON number that may be stored as a string via `node.getStr.parseInt` errors with
+  `undeclared field: 'parseInt' for type system.string` because `parseInt` lives in `std/strutils`.
+  symptom: compile error on the `parseInt` call, even though `getStr` is from `std/json`.
+  fix: add `import std/strutils` (or `import std/parseutils` won't give `parseInt` — it is `strutils`).
