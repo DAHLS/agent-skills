@@ -724,3 +724,12 @@
   Also `httpCodeToName` is not exported by `std/httpcore`, and
   `TimeoutError` is not a top-level std identifier (use `except
   CatchableError` to also catch timeouts from `httpclient`).
+
+[cli] parse `--opt value` (space form) by consuming the following `cmdArgument` (Nim 2.2.4)
+  Extends the `[cli] getopt cannot capture a separate-token option value`
+  entry (717). `for k,key,val in getopt():` yields `--opt` with `val=""`
+  and the value as the NEXT event as a `cmdArgument`. Instead of manual
+  parsing, track a `pending` option name: when a value-expecting option has
+  `val==""`, set `pending="opt"`; on the next `cmdArgument` assign `val=key`
+  and clear `pending`. After the loop, if `pending!=""` error "requires a
+  value". This gives `--output=x`, `--output x`, `-o x`, `-o=x` all working.
