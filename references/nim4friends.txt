@@ -676,3 +676,33 @@
     `import db_connector/db_sqlite`. The API (open/exec/getAllRows/sql,
     `?` placeholders) is unchanged. Needs libsqlite3 at link time
     (`ldconfig -p | grep sqlite3`); it is a link-time dep, not dynlib.
+
+[footgun] `std/db_sqlite` is NOT bundled in Nim 2.2.4 — links fail with "cannot open file: std/db_sqlite"
+  Nim 2.2.4 ships no `std/db_sqlite` (nor any std db backend); `import std/db_sqlite` fails at compile.
+  Symptom: `notes.nim(1, 11) Error: cannot open file: std/db_sqlite`.
+  Fix: either depend on an external nimble package (tiny_sqlite, sqlite3_abi, easy_sqlite3), or write a
+  minimal FFI binding to the system libsqlite3 and link with `--passL:"-lsqlite3"` (add `passL = "-lsqlite3"`
+  to nim.cfg so `nimble build` works too). System libsqlite3 is at /usr/lib*/libsqlite3.so.
+
+[http] `AsyncHttpClient.request` takes URL directly, not a Request object (Nim 2.2.4)
+  `newRequest(url)` fails: "undeclared identifier: 'newRequest'". The `request`
+  proc signature is `request(client, url: Uri|string, httpMethod=HttpGet, ...)`.
+  Fix: `await client.request(url)` — no intermediate Request construction needed.
+
+[http] `AsyncHttpClient.close` is NOT async (Nim 2.2.4)
+  `await client.close()` compiles but is unnecessary — `close` is a plain proc
+  (`proc close*(client: HttpClient|AsyncHttpClient)`), not async. Fix:
+  `client.close()` without await.
+
+[footgun] `filterIt` lives in `std/sequtils`, not `std/strutils` (Nim 2.2.4)
+  `seq[string].filterIt(...)` fails: "attempting to call undeclared routine:
+  'filterIt'" even with `import std/strutils`. Fix: add `import std/sequtils`.
+
+[footgun] `stripLines` doesn't exist; use `strip().splitLines()` (Nim 2.2.4)
+  `s.stripLines()` fails: "attempting to call undeclared routine: 'stripLines'".
+  Fix: `s.strip().splitLines()` (both in `std/strutils`).
+
+[footgun] `run` doesn't exist; use `waitFor` to execute async procs (Nim 2.2.4)
+  `run(asyncProc())` fails: "undeclared identifier: 'run'". Fix:
+  `waitFor asyncProc()` from `std/asyncdispatch`. (`runForever` exists but blocks
+  indefinitely; `waitFor` runs the event loop until the given Future completes.)
