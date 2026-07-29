@@ -797,3 +797,17 @@
   `requires "db_connector"`, and `import db_connector/db_sqlite`. API (open,
   exec, fastRows, sql, DbConn, close) is unchanged. Links the system
   libsqlite3 (impure) — needs libsqlite3.so at runtime.
+
+[cli] `getopt` value-expecting option eats the next token even if it's a flag (Nim 2.2.4)
+  Extends the `[cli] parse --opt value by consuming the following cmdArgument`
+  entry. With `getopt(argv, shortNoVal={'v'}, longNoVal=@["verbose"])`,
+  `--output --verbose foo.txt` yields `--output` with `val="--verbose"` —
+  i.e. getopt attaches the NEXT token verbatim as the value, WITHOUT checking
+  whether that token is itself a registered `longNoVal` flag. Symptom: `--verbose`
+  silently becomes the output *filename* (a file literally named `--verbose`
+  gets written), and `--verbose`'s flag effect is lost. The `pending`-on-empty-
+  `val` trick from the parent entry does NOT fire here because `val` is non-empty.
+  Fix: if an option's value must not start with `-`, reject `val` that begins
+  with `-` after getopt (e.g. `if val.startsWith("-"): fail(...)`), and document
+  that `--opt --flag` is ambiguous/rather use `--opt=--flag` for a literal dash
+  value. Confirmed empirically: creates a file named `--verbose` on disk.
