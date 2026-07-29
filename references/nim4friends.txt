@@ -811,3 +811,19 @@
   with `-` after getopt (e.g. `if val.startsWith("-"): fail(...)`), and document
   that `--opt --flag` is ambiguous/rather use `--opt=--flag` for a literal dash
   value. Confirmed empirically: creates a file named `--verbose` on disk.
+
+[build] use {.compile: "foo.c".} not {.passC: "foo.c".} to bundle a C source (Nim 2.2.4)
+  To compile a C file as part of the Nim build (FFI), the right pragma is
+  `{.compile: "foo.c".}`. Using `{.passC: "foo.c".}` instead attaches the
+  source filename to EVERY `gcc -c <nimfile>.c -o <nimfile>.c.o` invocation,
+  producing: `gcc: fatal error: cannot specify '-o' with '-c', '-S' or '-E'
+  with multiple files / compilation terminated.` from system.nim.c etc.
+  Symptom appears on the FIRST C compile after the pragma (e.g. exceptions.nim.c).
+  `.compile` compiles foo.c to its own .o once, then links it. Confirmed
+  empirically on Nim 2.2.4 / gcc 14.
+
+[footgun] C header guard/comment must use C `/* */`, not Nim `#` (Nim 2.2.4)
+  A `.h` referenced by an `{.importc, header: "foo.h".}` pragma is fed verbatim
+  to gcc via the generated `.nim.c`. A Nim-style first line `# foo.h` (comment)
+  yields `foo.h:1:3: error: invalid preprocessing directive #checksum`.
+  Fix: use `/* foo.h */`. Confirmed on Nim 2.2.4.
