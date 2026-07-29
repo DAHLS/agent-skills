@@ -827,3 +827,16 @@
   to gcc via the generated `.nim.c`. A Nim-style first line `# foo.h` (comment)
   yields `foo.h:1:3: error: invalid preprocessing directive #checksum`.
   Fix: use `/* foo.h */`. Confirmed on Nim 2.2.4.
+
+[json] Bool getter is `getBool`, not `getBVal` (Nim 2.2.4)
+  Calling `node.getBVal()` raises `attempting to call undeclared routine:
+  'getBVal'`. `std/json` exposes typed getters `getStr`/`getInt`/`getFloat`/
+  `getBool`/`getBiggestInt` — there is no `getBVal`. The `JBool` payload field
+  on the variant is `bval`, but the public accessor proc is `getBool(n, default=false)`.
+  Fix: `if d != nil and d.kind == JBool: cfg.debug = d.getBool()`.
+
+[build] `nim check --styleCheck:error` takes a single file, not a list (Nim 2.2.4)
+  `nim check --styleCheck:error a.nim b.nim` fails with
+  `Error: arguments can only be given if the '--run' option is selected`.
+  The check subcommand accepts one project file at a time. Fix: invoke once per
+  file, or wrap in a loop / nimble task. Verified 2.2.4.
