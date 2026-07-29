@@ -409,12 +409,15 @@
                      h, min, s, 0, local())
   or pass every arg positionally including `0` for nanosecond.
 
-[times] `dateTime` does NOT validate impossible calendar dates (Nim 2.2.4)
-  `dateTime(..., month=2, monthday=30, ...)` NORMALIZES (e.g. to Mar 2)
-  instead of raising — so an "invalid date" test expecting `ValueError`
-  fails silently (AssertionDefect, no exception). `Time` math then comes
-  out wrong rather than erroring. Fix: validate before calling — leap-
-  aware `daysInMonth` and raise `ValueError` on `day > maxDay`:
+[times] `dateTime` raises `AssertionDefect` (not `ValueError`) on impossible calendar dates (Nim 2.2.4)
+  `dateTime(..., month=2, monthday=30, ...)` raises "AssertionDefect:
+  times.nim(482, 3) `monthday <= getDaysInMonth(month, year)` 2025-02-30 is
+  not a valid date" in debug AND `-d:release` builds — a Defect, so
+  `except ValueError`/`except CatchableError` does not catch it (crash +
+  trace). Only `-d:danger` (assertions stripped) silently normalizes
+  (Feb 30 → Mar 2) and corrupts `Time` math. Either way `ValueError` is
+  never raised — validate before calling: leap-aware `daysInMonth` and
+  raise `ValueError` on `day > maxDay`:
     proc daysInMonth(y, m: int): int =
       if m == 2: (if (y mod 4 == 0 and y mod 100 != 0) or y mod 400 == 0: 29 else: 28)
       else: case m: of 1,3,5,7,8,10,12: 31 of 4,6,9,11: 30 else: 0
@@ -472,11 +475,13 @@
   as the commandLineParams/std/os entry — fix is to add the import:
     import std/strutils
 
-[times] `parse` DOES reject impossible calendar dates; `dateTime` does not (Nim 2.2.4)
+[times] `parse` rejects impossible dates with catchable `TimeParseError`; `dateTime` crashes with `AssertionDefect` (Nim 2.2.4)
   `parse("2025/02/29", "yyyy/MM/dd")` raises "Failed to parse '2025/02/29'
   with format 'yyyy/MM/dd'. 2025-02-29 is not a valid date" — input via
-  `parse` is calendar-validated for free. `dateTime(2025, mFeb, 29, ...)`
-  instead silently normalizes to Mar 1 (see the dateTime-validation
+  `parse` is calendar-validated for free, and the error is catchable. A
+  direct `dateTime(2025, mFeb, 29, ...)` instead raises `AssertionDefect`
+  (a Defect — not caught by `except CatchableError`) in debug/release;
+  silent normalization only under `-d:danger` (see the dateTime-validation
   entry). Consequence: the leap-aware `daysInMonth` pre-check is only
   skippable when ALL date input flows through `parse`; any direct
   `dateTime` construction still needs it.
