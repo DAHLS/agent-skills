@@ -779,3 +779,12 @@
   "Error: unhandled exception: Number of arguments: 1, is different from
   tensor rank: 2 [IndexDefect]". Fix: index `m[0, j]`, or drop the axis
   first with `m.squeeze(0)` / `m.squeeze()`. (arraymancer 0.7.33, Nim 2.2.4)
+
+[http] `await all(futs)` result is a `lent seq` and must be used or discarded (Nim 2.2.4)
+  `await all(futs)` inside an `{.async.}` proc fails:
+  "expression ... is of type 'lent seq[...]' and has to be used (or discarded)".
+  `asyncfutures.all` returns a Future whose carried value is the seq of
+  results, and the `{.async.}` macro makes that the proc's implicit result;
+  an unused `lent` value is an error. Fix: `discard await all(futs)`, or
+  bind it (`let rs = await all(futs)`). Extends the `[http] all replaces
+  allFutures` entry.
