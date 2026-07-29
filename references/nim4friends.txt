@@ -771,3 +771,11 @@
   line lands on stdout/stderr without the `error:` prefix). Fix: collapse
   before printing:
     stderr.writeLine "error: " & e.msg.splitLines().join("; ")
+
+[arraymancer] axis reductions keep the reduced axis as size 1 (rank preserved)
+  `mean`/`min`/`max`/`sum` with `axis:` return a tensor of the SAME rank:
+  `t.mean(axis = 0)` on shape [1000, 10] gives shape [1, 10], not [10].
+  Scalar access `m[j]` then crashes at runtime:
+  "Error: unhandled exception: Number of arguments: 1, is different from
+  tensor rank: 2 [IndexDefect]". Fix: index `m[0, j]`, or drop the axis
+  first with `m.squeeze(0)` / `m.squeeze()`. (arraymancer 0.7.33, Nim 2.2.4)
