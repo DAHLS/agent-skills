@@ -843,5 +843,20 @@
 [build] `nim check --styleCheck:error` takes a single file, not a list (Nim 2.2.4)
   `nim check --styleCheck:error a.nim b.nim` fails with
   `Error: arguments can only be given if the '--run' option is selected`.
-  The check subcommand accepts one project file at a time. Fix: invoke once per
-  file, or wrap in a loop / nimble task. Verified 2.2.4.
+   The check subcommand accepts one project file at a time. Fix: invoke once per
+   file, or wrap in a loop / nimble task. Verified 2.2.4.
+
+[nimble] `requires "nim>=2.0.0"` (no spaces) is read as a literal package name (Nim 2.2.4)
+  A .nimble file with `requires "nim>=2.0.0"` fails to load:
+  `Error: Package nim>=2.0.0@any version not found.` Nimble parses the token
+  `nim>=2.0.0` (operator glued to the name) as the package NAME and tries to
+  fetch it, instead of treating `nim` as the compiler-version pseudo-package.
+  Fix: surround the operator with spaces so nimble's grammar splits name
+  from version: `requires "nim >= 2.0.0"`.
+
+[footgun] `seq.join` also needs `import std/strutils` (extends the split entry)
+  Extends the `[footgun] split needs import std/strutils` entry. Building a
+  string from a `seq[int]` via `dims.join(", ")` fails:
+  `Error: attempting to call undeclared routine: 'join'`. `join` for sequences
+  lives in `std/strutils` alongside `split`; `system` does not auto-import it.
+  Fix: `import std/strutils`.
