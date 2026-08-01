@@ -572,8 +572,8 @@
 
 [sdl2] bare `quit()` is ambiguous with `system.quit` (Nim 2.2.4, sdl2 2.0.5)
   After `import sdl2`, a bare zero-arg `quit()` fails to compile:
-     Error: ambiguous call; both system.quit(errorcode: int)
-     [system.nim] and sdl2.quit() [sdl2.nim] match for: ()
+    Error: ambiguous call; both system.quit(errorcode: int)
+    [system.nim] and sdl2.quit() [sdl2.nim] match for: ()
   because `system.quit(errorcode)` has a default arg, making it
   callable with (). Fix: qualify the SDL shutdown: `sdl2.quit()`.
   `quit("msg")` still resolves to `system.quit(string)` by arity —
@@ -596,7 +596,7 @@
   SDL_RenderGeometry or SDL_Vertex (grep of the package: zero hits),
   so SDL3-style filled-triangle geometry is unavailable. For filled
   polygons use `import sdl2/gfx`:
-     filledPolygonRGBA(renderer, addr vx[0], addr vy[0], n, r, g, b, a)
+    filledPolygonRGBA(renderer, addr vx[0], addr vy[0], n, r, g, b, a)
   which takes SEPARATE `ptr int16` vx/vy arrays (16-bit coords), not
   an interleaved vertex struct; needs libSDL2_gfx at runtime (dynlib,
   like the core lib). Alternative: hand-import SDL_RenderGeometry
@@ -639,13 +639,13 @@
   `AsyncHttpClient timeout field is a no-op on the async path` entry
   for the working fix (`withTimeout`).
 
- [http] Shared `AsyncHttpClient` across concurrent async requests crashes
+[http] Shared `AsyncHttpClient` across concurrent async requests crashes
   Reusing one `AsyncHttpClient` for concurrent `await` calls causes
   socket conflicts — one coroutine's connection gets closed by another,
   triggering asserts like "Cannot `recv` on a closed socket". Fix:
   create a separate `newAsyncHttpClient()` per fetch coroutine.
 
- [exn] Custom catchable exceptions are value `object of CatchableError`, raised via `newException` (Nim 2.0+)
+[exn] Custom catchable exceptions are value `object of CatchableError`, raised via `newException` (Nim 2.0+)
   In Nim 2.0+, `CatchableError`/`Exception` are VALUE objects
   (`CatchableError* = object of Exception`), not refs. So a custom
   error type is `type DbError* = object of CatchableError` (value).
@@ -657,7 +657,7 @@
   (can't raise a value object). Extends the `[exn]` "except
   CatchableError" entry: that one is for catching, this one for throwing.
 
- [footgun] sqlite3_step returns 100 (SQLITE_ROW) for a row, 101 (SQLITE_DONE) on completion
+[footgun] sqlite3_step returns 100 (SQLITE_ROW) for a row, 101 (SQLITE_DONE) on completion
   Wrapping the C SQLite API by hand: `sqlite3_step` returns 101
   (`SQLITE_DONE`) after a successful INSERT/UPDATE (no result rows), and
   100 (`SQLITE_ROW`) when a SELECT produced a row. A read loop written
@@ -670,25 +670,25 @@
   success set is {100, 101}; in a read loop,
   `if rc == 100: read row; elif rc == 101: break`.
 
-  [idiom] `try:` needs an explicit colon before a multiline body (Nim 2.x)
-    `try` WITHOUT a trailing colon, immediately followed by an indented
-    statement (`for`, `echo`, ...) fails to parse:
-    "expected: ':', but got: 'keyword for'". Add the colon:
-      try:
-        for x in items: ...
-    (`try` / `except` / `finally` on the same structural line still work
-    without it, but the bare multiline-block form requires `try:`.)
+[idiom] `try:` needs an explicit colon before a multiline body (Nim 2.x)
+  `try` WITHOUT a trailing colon, immediately followed by an indented
+  statement (`for`, `echo`, ...) fails to parse:
+  "expected: ':', but got: 'keyword for'". Add the colon:
+    try:
+      for x in items: ...
+  (`try` / `except` / `finally` on the same structural line still work
+  without it, but the bare multiline-block form requires `try:`.)
 
-  [db] stdlib `db_sqlite` was REMOVED from Nim 2.x stdlib (Nim 2.0+)
-    `import std/db_sqlite` fails with "cannot open file: std/db_sqlite".
-    The old db_* modules moved to the `db_connector` nimble package.
-    Fix: `nimble install db_connector` (or `db`, which depends on it) and
-    `import db_connector/db_sqlite`. The API (open/exec/getAllRows/sql,
-    `?` placeholders) is unchanged. Needs libsqlite3 at link time
-    (`ldconfig -p | grep sqlite3`); it is a link-time dep, not dynlib.
-    Alternatively, write a minimal FFI binding to the system libsqlite3 and
-    link with `--passL:"-lsqlite3"` (add `passL = "-lsqlite3"` to nim.cfg so
-    `nimble build` works too). System libsqlite3 is at /usr/lib*/libsqlite3.so.
+[db] stdlib `db_sqlite` was REMOVED from Nim 2.x stdlib (Nim 2.0+)
+  `import std/db_sqlite` fails with "cannot open file: std/db_sqlite".
+  The old db_* modules moved to the `db_connector` nimble package.
+  Fix: `nimble install db_connector` (or `db`, which depends on it) and
+  `import db_connector/db_sqlite`. The API (open/exec/getAllRows/sql,
+  `?` placeholders) is unchanged. Needs libsqlite3 at link time
+  (`ldconfig -p | grep sqlite3`); it is a link-time dep, not dynlib.
+  Alternatively, write a minimal FFI binding to the system libsqlite3 and
+  link with `--passL:"-lsqlite3"` (add `passL = "-lsqlite3"` to nim.cfg so
+  `nimble build` works too). System libsqlite3 is at /usr/lib*/libsqlite3.so.
 
 [http] `AsyncHttpClient.request` takes URL directly, not a Request object (Nim 2.2.4)
   `newRequest(url)` fails: "undeclared identifier: 'newRequest'". The `request`
