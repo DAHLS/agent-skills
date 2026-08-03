@@ -595,16 +595,24 @@
   `ev.kind == QuitEvent`, not C's `ev.type`/`SDL_QUIT`. Never write
   calls from C SDL2 docs — read the wrapper source for the real names.
 
-[sdl2] no SDL_RenderGeometry/SDL_Vertex in the wrapper; use sdl2/gfx (Nim 2.2.4, sdl2 2.0.5)
-  The wrapper predates SDL2 2.0.18 and never imports
-  SDL_RenderGeometry or SDL_Vertex (grep of the package: zero hits),
-  so SDL3-style filled-triangle geometry is unavailable. For filled
-  polygons use `import sdl2/gfx`:
+[sdl2] no `SDL_RenderGeometry`/`SDL_Vertex` in the wrapper; use `sdl2/gfx` (Nim 2.2.4, sdl2 2.0.5)
+  The sdl2 Nim wrapper (pinned to the SDL2 2.0.5 API surface) predates
+  `SDL_RenderGeometry` (added in SDL2 2.0.18) and never wraps it — a
+  package grep for `renderGeometry`/`SDL_Vertex` returns zero hits. So
+  calling it fails:
+    Error: undeclared identifier: 'renderGeometry'
+    Error: undeclared identifier: 'SDL_RenderGeometry'
+  (the wrapper strips the `SDL_` prefix, so neither `SDL_RenderGeometry`
+  nor `renderGeometry` resolves); `SDL_Vertex` is likewise absent.
+  Filled polygons are still available via `import sdl2, sdl2/gfx`:
     filledPolygonRGBA(renderer, addr vx[0], addr vy[0], n, r, g, b, a)
-  which takes SEPARATE `ptr int16` vx/vy arrays (16-bit coords), not
-  an interleaved vertex struct; needs libSDL2_gfx at runtime (dynlib,
-  like the core lib). Alternative: hand-import SDL_RenderGeometry
-  with a matching SDL_Vertex layout if the system SDL2 is ≥ 2.0.18.
+  `vx`/`vy` are SEPARATE `ptr int16` arrays (16-bit coords), `n: cint`,
+  `r,g,b,a: uint8` — not an interleaved vertex struct. (`RendererPtr`
+  comes from `import sdl2`.) Needs libSDL2_gfx at runtime (dynlib
+  "libSDL2_gfx(|-1.0).so(|.0)"; verified: a headless draw under
+  SDL_VIDEODRIVER=dummy returns SdlSuccess). For true `SDL_RenderGeometry`,
+  hand-import it with a matching `SDL_Vertex` layout if the system
+  SDL2 is >= 2.0.18.
 
 [sdl2] SDL_Return/Bool32 are enums; bare `if init()` inverts C error checks (Nim 2.2.4, sdl2 2.0.5)
   init returns SDL_Return (SdlError = -1, SdlSuccess = 0); pollEvent
