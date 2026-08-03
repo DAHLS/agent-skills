@@ -798,15 +798,6 @@
   bind it (`let rs = await all(futs)`). Extends the `[http] all replaces
   allFutures` entry.
 
-[build] `std/db_sqlite` (and db_mysql/db_postgres) removed from stdlib; use db_connector (Nim 2.2.4)
-  `import std/db_sqlite` (or `import db_sqlite`) fails at compile:
-  `Error: cannot open file: std/db_sqlite`. The `db_*` modules were extracted
-  from the stdlib into the `db_connector` nimble package (the `db` package is a
-  different, unified wrapper). Fix: `nimble install db_connector`, add
-  `requires "db_connector"`, and `import db_connector/db_sqlite`. API (open,
-  exec, fastRows, sql, DbConn, close) is unchanged. Links the system
-  libsqlite3 (impure) — needs libsqlite3.so at runtime.
-
 [cli] `getopt` value-expecting option eats the next token even if it's a flag (Nim 2.2.4)
   Extends the `[cli] parse --opt value by consuming the following cmdArgument`
   entry. With `getopt(argv, shortNoVal={'v'}, longNoVal=@["verbose"])`,

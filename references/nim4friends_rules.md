@@ -68,6 +68,7 @@ Titles are the awareness layer; bodies are the detail layer.
 | `[json]` | std/json module |
 | `[http]` | std/httpclient module |
 | `[os]` | std/os module |
+| `[db]` | stdlib `db_sqlite` (removed in 2.x → `db_connector`), SQLite FFI, database trap |
 | `[exn]` | Exception model and `except` handlers |
 | `[idiom]` | Style/convention lessons |
 | `[footgun]` | Silent surprises that cost a debug cycle |
