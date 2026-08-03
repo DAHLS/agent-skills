@@ -387,15 +387,19 @@
   and wrap the load in `try/except CatchableError`, treating an
   unreadable cache as a miss — the next save then self-heals the file.
 
-[http] `getContent` returns the body regardless of HTTP status
-  `httpClient.getContent(url)` (and the async variant) return the
-  response body even for 4xx/5xx — there is no automatic raise. A 404
-  or 500 silently flows downstream and surfaces as a confusing parse
-  error far from the fetch site. Use the lower-level `request()`/
-  `response()` procs and check `response.code().is2xx` (or test
-  `response.status`) before consuming the body. For unattended code
-  hitting network APIs, always validate status at the boundary — never
-  assume a returned body means success.
+[http] `request`/`get` return the `Response` regardless of HTTP status (Nim 2.2.4)
+  `httpClient.request(url)` and `.get(url)` (sync and async) return the
+  `Response` object even for 4xx/5xx — there is no raise. A 404 or 500
+  silently flows downstream and surfaces as a confusing parse error far
+  from the fetch site. Check `response.code().is2xx` (or test
+  `response.status`) before consuming `response.body`. For unattended
+  code hitting network APIs, always validate status at the boundary —
+  never assume a returned body means success.
+  Contrast: the `*Content` procs (`getContent`/`postContent`/…) DO raise
+  `HttpRequestError` on 4xx/5xx via `responseContent` (httpclient.nim
+  ~line 1238), msg is the status string verbatim (e.g.
+  `HttpRequestError: 404 NOT FOUND`); a bare `except HttpRequestError`
+  suffices for that pattern.
 
 [times] `dateTime` replaced `initDateTime` and has a different 8-arg signature (Nim 2.2.4)
   `initDateTime` is deprecated; `dateTime` signature is
