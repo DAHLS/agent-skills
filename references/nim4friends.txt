@@ -863,3 +863,17 @@
   `Error: attempting to call undeclared routine: 'join'`. `join` for sequences
   lives in `std/strutils` alongside `split`; `system` does not auto-import it.
   Fix: `import std/strutils`.
+
+[times] `DateTime` has no `zone`/`.zone` field; the timezone accessor is `timezone(dt)` (Nim 2.2.4)
+  Building a `DateTime` at another date's same wall clock, I wrote
+  `dateTime(y, m, d, ref.hour, ref.minute, ref.second, 0, reference.zone)`.
+  The `zone` in the signature is a *proc parameter name*, not a field:
+  `Error: undeclared field: 'zone' for type times.DateTime`. Both `DateTime.utcOffset`
+  and `DateTime.timezone` are private (no `*`), so you cannot read them as fields
+  from another module. Fix: use the public accessor proc (an `{.inline.}` overload too):
+    dateTime(y, m, d, ref.hour, ref.minute, ref.second, 0, timezone(reference))
+  Only `reference.hour/minute/second` are directly readable (public getters); the
+  timezone needs the `timezone(dt)` call. Also affects DST-correct subtraction:
+  matching the target's zone to the reference's (`now()` → `timezone(now())`) keeps
+  the two DateTimes in the same offset so `(target - reference)` yields true elapsed
+  seconds across DST-transition days.
