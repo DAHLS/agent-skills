@@ -11,7 +11,8 @@ behavior changed materially across versions.
 |------|---------|
 | `SKILL.md` | Decision-making guidance (memory model, project/nimble structure, concurrency, error handling, build flags, C FFI, testing) and the verify-first research method. Auto-invoked by OpenCode on Nim tasks. |
 | `references/nim4friends_rules.md` | Reading, adding, and editing rules for the trap log. Read in full before using `nim4friends.txt`. |
-| `references/nim4friends.txt` | The entries — a persistent, evidence-based log of Nim traps learned across sessions (build flags, exception model, pixie/arraymancer/nimhdf5, times/json/http/os, idioms, footguns). See `nim4friends_rules.md` for rules. |
+| `references/nim4friends.txt` | The entries — a persistent, evidence-based log of Nim traps learned across sessions (build flags, exception model, pixie/arraymancer/nimhdf5, times/json/http/os, idioms, footguns). Verified canon — the only file models read entries from. See `nim4friends_rules.md` for rules. |
+| `references/trap-inbox.md` | Unverified staging queue. Models append candidate entries here (canon-shaped, per the ADDING rules); only the owner verifies and promotes them into `nim4friends.txt`. Models never read this for guidance. |
 | `LICENSE` | GPL-3.0. |
 
 ## How it works in OpenCode
@@ -20,7 +21,8 @@ OpenCode reads `SKILL.md` natively from the `skills/` directory. The skill
 triggers automatically when a task involves Nim (`.nim` files, `nimble`, compile
 flags, Nim errors). `references/nim4friends_rules.md` is read in full;
 `references/nim4friends.txt` is grepped on demand, not loaded into context
-unless something opens it.
+unless something opens it. `references/trap-inbox.md` is a write-only staging
+queue — never read for guidance.
 
 The companion OpenCode Skills Collection plugin only manages
 `*-category-pointer` folders — it never touches this folder.
@@ -36,21 +38,24 @@ git clone https://github.com/DAHLS/nim-development.git \
 
 ## Recording lessons (the important part)
 
-`references/nim4friends.txt` compounds in value only if every session writes
-down what it learned. When you hit a Nim error, a silently-wrong result, or a
+The trap log compounds in value only if every session writes down what it
+learned. When you hit a Nim error, a silently-wrong result, or a
 version-specific behavior, append the lesson **per the rules in
 `references/nim4friends_rules.md`**, then commit and push so it reaches other
 machines:
 
 ```bash
 cd ~/.config/opencode/skills/nim-development
-git add references/nim4friends.txt references/nim4friends_rules.md
+git add references/nim4friends.txt references/nim4friends_rules.md references/trap-inbox.md
 git commit -m "nim4friends: <what you learned>"
 git push
 ```
 
-Never reorder, reformat, condense, or delete entries you merely disagree with.
-Correct factually-wrong entries in place.
+New entries go to `references/trap-inbox.md` (unverified staging). Verified
+entries are promoted into `references/nim4friends.txt` by the owner per the
+"Promoting (owner)" procedure. Never reorder, reformat, condense, or delete
+entries you merely disagree with. Correct factually-wrong entries in place (via
+the inbox, owner-verified).
 
 ## Maintaining this skill
 

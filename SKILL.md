@@ -22,7 +22,9 @@ and runtime errors.
 
 It contains the reading, adding, and editing rules
 for the trap log. Then use those rules to access `references/nim4friends.txt`
-(the entries). Both ship in the **same repo as this skill**, so they are
+(the entries) and append new lessons to `references/trap-inbox.md` (the
+unverified staging queue, **not** read for guidance — canon is authoritative).
+Both ship in the **same repo as this skill**, so they are
 always present and current — do not assume the entries file is empty.
 This skill does **not** repeat those entries; it complements them with
 decision-making and a way to learn *new* traps correctly.
@@ -157,19 +159,30 @@ Qualifying events:
 
 ### How to record
 
-Append to `references/nim4friends.txt` following **the ADDING rules in
-`references/nim4friends_rules.md`** (read it in full before writing).
+Append your **candidate** to `references/trap-inbox.md` following **the ADDING
+rules in `references/nim4friends_rules.md`** (read it in full before writing).
+
+The inbox is unverified staging — you write here, you do **not** read here for
+guidance. `references/nim4friends.txt` is the verified canon (and the only
+place you read entries from). Only the owner verifies and promotes a candidate
+into canon; your job is to submit it canon-shaped so promotion is a
+verify-then-move.
 
 ### Close the loop (this repo)
 
-`references/nim4friends.txt` lives in a git repo. After appending (or editing
-the rules file), commit and push so the lesson reaches your other machines:
+`references/nim4friends.txt` and `references/trap-inbox.md` live in a git repo.
+After appending a candidate (or editing the rules file), commit and push so it
+reaches your other machines:
 
 ```
-git -C ~/.config/opencode/skills/nim-development add references/nim4friends.txt references/nim4friends_rules.md
+git -C ~/.config/opencode/skills/nim-development add references/nim4friends.txt references/nim4friends_rules.md references/trap-inbox.md
 git -C ~/.config/opencode/skills/nim-development commit -m "nim4friends: <what you learned>"
 git -C ~/.config/opencode/skills/nim-development push
 ```
+
+Promoting a candidate into canon is the **owner's** step (see "Promoting
+(owner)" in `nim4friends_rules.md`) — models submit to the inbox, they do not
+write canon directly.
 
 This commit-and-push is **pre-authorized for the skill repo only** and
 overrides the global "ask before commit" rule; the user's project repos are
@@ -328,7 +341,7 @@ Two compiler errors recur constantly and are easy to misread:
 - [ ] Selected build flags for this context (release keeps checks)?
 - [ ] Handlers use `except CatchableError`?
 - [ ] Ran `nimpretty` (format) and `nim check --styleCheck:error`?
-- [ ] **Recorded any newly-learned trap** in `references/nim4friends.txt` and committed/pushed it? (mandatory if you hit an error, a silent-wrong result, or a version-specific behavior — see [Recording lessons](#recording-lessons-mandatory))
+- [ ] **Recorded any newly-learned trap** in `references/trap-inbox.md` and committed/pushed it? (mandatory if you hit an error, a silent-wrong result, or a version-specific behavior — see [Recording lessons](#recording-lessons-mandatory))
 
 ## Limitations
 
