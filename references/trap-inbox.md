@@ -18,3 +18,15 @@ promotion is a verify-then-move, not a rewrite.
 ---
 
 <!-- new candidate entries go below this line -->
+
+[footgun] No `isFinite` for floats in `std/math` (Nim 2.2.4)
+
+Trap: reaching for `x.isFinite` (habit from other languages / vmath).
+Symptom: compile error `Error: undeclared field: 'isFinite' for type
+system.float64`.
+Fix: gate on `classify` instead:
+
+```nim
+func finite(x: float64): bool {.inline.} =
+  classify(x) in {fcNormal, fcSubnormal, fcZero, fcNegZero}
+```
