@@ -1,0 +1,3 @@
+interface:
+  display_name: "Nim Development"
+  short_description: "Nim decisions and current, version-correct info — use when writing, building, or debugging Nim (.nim, nimble, compile flags, mm/GC, C FFI, compiler errors)"

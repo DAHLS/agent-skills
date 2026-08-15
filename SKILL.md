@@ -11,23 +11,12 @@ risk: safe
 > with sparse, version-fragmented docs.
 > **Verify against primary sources — do not trust stale priors.**
 
-## When to Use
-
-Use when a task involves Nim: authoring `.nim` code, `nimble` packaging,
-compile flags, memory-management choices, C interop, or diagnosing compiler
-and runtime errors.
-
->Read `references/nim4friends_rules.md` **in full**
->**THIS IS A MANDATORY ACTION - READ `references/nim4friends_rules.md`**
-
-It contains the reading, adding, and editing rules
-for the trap log. Then use those rules to access `references/nim4friends.txt`
-(the entries) and append new lessons to `references/trap-inbox.md` (the
-unverified staging queue, **not** read for guidance — canon is authoritative).
-Both ship in the **same repo as this skill**, so they are
-always present and current — do not assume the entries file is empty.
-This skill does **not** repeat those entries; it complements them with
-decision-making and a way to learn *new* traps correctly.
+**Read `references/nim4friends_rules.md` in full before anything else —
+mandatory.** It governs how you read the canon (`nim4friends.txt`) and
+where candidates go (`trap-inbox.md`). All three ship in the same repo as
+this skill — **do not assume the entries file is empty**. This skill does
+not repeat those entries; it complements them with decision-making and a
+way to learn *new* traps correctly.
 
 **And, non-negotiably, feed lessons back into it** — see
 [Recording lessons](#recording-lessons-mandatory). The value of this file
@@ -175,9 +164,9 @@ After appending a candidate (or editing the rules file), commit and push so it
 reaches your other machines:
 
 ```
-git -C ~/.config/opencode/skills/nim-development add references/nim4friends.txt references/nim4friends_rules.md references/trap-inbox.md
-git -C ~/.config/opencode/skills/nim-development commit -m "nim4friends: <what you learned>"
-git -C ~/.config/opencode/skills/nim-development push
+git -C ~/.agents/skills/nim-development add references/nim4friends.txt references/nim4friends_rules.md references/trap-inbox.md
+git -C ~/.agents/skills/nim-development commit -m "nim4friends: <what you learned>"
+git -C ~/.agents/skills/nim-development push
 ```
 
 Promoting a candidate into canon is the **owner's** step (see "Promoting
@@ -320,19 +309,10 @@ Two compiler errors recur constantly and are easy to misread:
   needs `std/os`; `getopt` is in `std/parseopt`; `split` is in
   `std/strutils`).
 
-## Anti-patterns
-
-### ❌ DON'T
-- Answer a Nim API question from memory without checking the version/docs.
-- Rely on `nimble.directory` (web) — use `nimble search`.
-- Use `except Exception` (swallows `Defect` in 2.0).
-- Assume `-d:release` removes bounds/overflow checks.
-- Use threads for an I/O-bound problem.
-- Guess a sparse-doc library's API instead of reading its `tests/`.
-
 ## Decision checklist
 
-- [ ] Read `nim4friends_rules.md` in full - **NB MANDATORY ACTION**; accessed `nim4friends.txt` per its Reading rules (full if small, title-scan if large)?
+- [ ] Read `nim4friends_rules.md` in full (mandatory); accessed
+      `nim4friends.txt` per its reading rules?
 - [ ] Confirmed the target Nim version?
 - [ ] Verified any uncertain API against a primary source (docs/source/tests)?
 - [ ] Vetted the chosen library's liveness + Nim-version fit (§6)?
