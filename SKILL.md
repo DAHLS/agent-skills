@@ -53,6 +53,13 @@ committing to an API.
    For sparse-doc libraries (pixie, arraymancer, nimhdf5) the source *is* the
    documentation — the `tests/` directory shows real, compiling API usage.
    Read it before guessing.
+   > **Semantics exception:** when the answer depends on what a template,
+   > macro, or heavy generic *expands to* (result shape/rank, ordering,
+   > mutation vs copy), a minimal runtime probe (`nim c -r`, ≤10 lines,
+   > written under /tmp) outranks reading the source — template source
+   > answers "does this exist / which path runs"; only running code answers
+   > "what comes back" (see the `[arraymancer]` rank-preservation entry for
+   > the canonical instance).
 3. **Version diffs & community**
    - Nim changelog (release notes / migration): the `changelog.md` in
      `nim-lang/Nim` on GitHub.
@@ -314,7 +321,7 @@ Two compiler errors recur constantly and are easy to misread:
 - [ ] Read `nim4friends_rules.md` in full (mandatory); accessed
       `nim4friends.txt` per its reading rules?
 - [ ] Confirmed the target Nim version?
-- [ ] Verified any uncertain API against a primary source (docs/source/tests)?
+- [ ] Verified any uncertain API against a primary source (docs/source/tests — or a minimal `nim c -r` probe when the question is what template/macro code does at runtime)?
 - [ ] Vetted the chosen library's liveness + Nim-version fit (§6)?
 - [ ] Chosen `--mm` deliberately (not by accident)?
 - [ ] Picked the right concurrency model (I/O vs CPU)?
