@@ -1,13 +1,12 @@
 # agent-skills
 
-Home-made [OpenCode](https://opencode.ai/) skills, kept in one repo for
-version control across machines.
+Home-made skills for [OpenCode](https://opencode.ai/).
 
-| Skill | What it does |
-|-------|--------------|
+| Skill                                               | What it does                                                                                                                                                                                                                                      |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`skills/nim-development`](skills/nim-development/) | Writing, building, and debugging **Nim** — decision guidance plus a research discipline for finding current, version-correct Nim info (thin training-data footprint). Carries a persistent trap log (`nim4friends`) with an owner-verified inbox. |
-| [`skills/doc-sync`](skills/doc-sync/) | Sync project docs to reality for a cold handoff — fresh session or post-compaction pickup. Inventory-first, six mandatory steps. |
-| [`skills/nftt`](skills/nftt/) | Drive a consuming project through the [nFTT](https://github.com/DAHLS/nFTT) fine-tuning loop — init, config/data declaration, pipeline, train, export, eval, reading results. Topic-split reference under `references/topics/`. |
+| [`skills/doc-sync`](skills/doc-sync/)               | Sync project docs to reality for a cold handoff — fresh session or post-compaction pickup. Inventory-first, six mandatory steps.                                                                                                                  |
+| [`skills/nftt`](skills/nftt/)                       | Drive a consuming project through the [nFTT](https://github.com/DAHLS/nFTT) fine-tuning loop — init, config/data declaration, pipeline, train, export, eval, reading results. Topic-split reference under `references/topics/`.                   |
 
 ## Install
 
@@ -38,9 +37,6 @@ Run the official checker from `agentskills/agentskills`:
 skills-ref validate ~/.agents/agent-skills/skills/<name>
 ```
 
-Then smoke-test in a fresh session before pushing.
-
 ## License
 
-GPL-3.0. See `LICENSE`. The `nftt` skill documents the nFTT tool, which is
-AGPL-3.0-or-later.
+GPL-3.0. See `LICENSE`.
