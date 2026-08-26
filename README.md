@@ -1,77 +1,46 @@
-# nim-development
+# agent-skills
 
-An [OpenCode](https://opencode.ai/) skill for writing, building, and debugging
-**Nim**, plus a research discipline for finding *current, version-correct* Nim
-information — important because Nim's training-data footprint is thin and its
-behavior changed materially across versions.
+Home-made [OpenCode](https://opencode.ai/) skills, kept in one repo for
+version control across machines.
 
-## What's in here
+| Skill | What it does |
+|-------|--------------|
+| [`skills/nim-development`](skills/nim-development/) | Writing, building, and debugging **Nim** — decision guidance plus a research discipline for finding current, version-correct Nim info (thin training-data footprint). Carries a persistent trap log (`nim4friends`) with an owner-verified inbox. |
+| [`skills/doc-sync`](skills/doc-sync/) | Sync project docs to reality for a cold handoff — fresh session or post-compaction pickup. Inventory-first, six mandatory steps. |
+| [`skills/nftt`](skills/nftt/) | Drive a consuming project through the [nFTT](https://github.com/DAHLS/nFTT) fine-tuning loop — init, config/data declaration, pipeline, train, export, eval, reading results. Topic-split reference under `references/topics/`. |
 
-| Path | Purpose |
-|------|---------|
-| `SKILL.md` | Decision-making guidance (memory model, project/nimble structure, concurrency, error handling, build flags, C FFI, testing) and the verify-first research method. Auto-invoked by OpenCode on Nim tasks. |
-| `references/nim4friends_rules.md` | Reading, adding, and editing rules for the trap log. Read in full before using `nim4friends.txt`. |
-| `references/nim4friends.txt` | The entries — a persistent, evidence-based log of Nim traps learned across sessions (build flags, exception model, pixie/arraymancer/nimhdf5, times/json/http/os, idioms, footguns). Verified canon — the only file models read entries from. See `nim4friends_rules.md` for rules. |
-| `references/trap-inbox.md` | Unverified staging queue. Models append candidate entries here (canon-shaped, per the ADDING rules); only the owner verifies and promotes them into `nim4friends.txt`. Models never read this for guidance. |
-| `LICENSE` | GPL-3.0. |
+## Install
 
-## How it works in OpenCode
-
-OpenCode reads `SKILL.md` natively from the `skills/` directory. The skill
-triggers automatically when a task involves Nim (`.nim` files, `nimble`, compile
-flags, Nim errors). `references/nim4friends_rules.md` is read in full;
-`references/nim4friends.txt` is grepped on demand, not loaded into context
-unless something opens it. `references/trap-inbox.md` is a write-only staging
-queue — never read for guidance.
-
-The companion OpenCode Skills Collection plugin only manages
-`*-category-pointer` folders — it never touches this folder.
-
-## Install / sync on another machine
-
-Clone directly into the OpenCode skills directory:
+Clone once, symlink the skills your loader discovers:
 
 ```bash
-git clone https://github.com/DAHLS/nim-development.git \
-  ~/.config/opencode/skills/nim-development
+git clone git@github.com:DAHLS/agent-skills.git ~/.agents/agent-skills
+ln -s ../agent-skills/skills/nim-development ~/.agents/skills/nim-development
+ln -s ../agent-skills/skills/doc-sync       ~/.agents/skills/doc-sync
+ln -s ../agent-skills/skills/nftt           ~/.agents/skills/nftt
 ```
 
-## Recording lessons (the important part)
+(Adjust paths to wherever your tool expects skills; this is the layout used
+on the author's machines.) Pulling inside `~/.agents/agent-skills` updates
+every installed skill at once.
 
-The trap log compounds in value only if every session writes down what it
-learned. When you hit a Nim error, a silently-wrong result, or a
-version-specific behavior, append the lesson **per the rules in
-`references/nim4friends_rules.md`**, then commit and push so it reaches other
-machines:
+## Skill metadata conventions
+
+Every `SKILL.md` may carry a local house field `risk:`; spec-compliant
+loaders ignore unknown fields. Each skill may ship an `agents/` folder with
+tool-specific interface hints (`openai.yaml`).
+
+## Validating after edits
+
+Run the official checker from `agentskills/agentskills`:
 
 ```bash
-cd ~/.config/opencode/skills/nim-development
-git add references/nim4friends.txt references/nim4friends_rules.md references/trap-inbox.md
-git commit -m "nim4friends: <what you learned>"
-git push
+skills-ref validate ~/.agents/agent-skills/skills/<name>
 ```
 
-New entries go to `references/trap-inbox.md` (unverified staging). Verified
-entries are promoted into `references/nim4friends.txt` by the owner per the
-"Promoting (owner)" procedure. Never reorder, reformat, condense, or delete
-entries you merely disagree with. Correct factually-wrong entries in place (via
-the inbox, owner-verified).
-
-## Maintaining this skill
-
-- **Validate after frontmatter edits** — run the official checker from
-  `agentskills/agentskills`:
-  `skills-ref validate ~/.config/opencode/skills/nim-development`
-- **`risk:` frontmatter field** is a local house convention (every skill in
-  `~/.config/opencode/skills/` carries it). Spec-compliant loaders ignore
-  unknown fields. If this skill is ever published, move it under the spec's
-  `metadata:` mapping.
-- **Smoke-test after SKILL.md changes** — run a fresh agent session on a
-  small Nim task and watch whether the guidance lands. A prompt that has
-  worked: "plan a Nim CLI that takes a date (YYYY/MM/DD) and prints seconds
-  from now to that date, leap-year correct". Check: rules file read first?
-  Known traps avoided on the first attempt? New lessons appended and pushed?
+Then smoke-test in a fresh session before pushing.
 
 ## License
 
-GPL-3.0. See `LICENSE`.
+GPL-3.0. See `LICENSE`. The `nftt` skill documents the nFTT tool, which is
+AGPL-3.0-or-later.

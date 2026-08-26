@@ -1,0 +1,3 @@
+interface:
+  display_name: "Doc Sync"
+  short_description: "Sync the docs to reality — run when asked to sync/wrap docs, when docs lag the commits, or before a handoff or compaction"
