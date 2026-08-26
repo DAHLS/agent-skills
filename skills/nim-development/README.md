@@ -29,12 +29,17 @@ The companion OpenCode Skills Collection plugin only manages
 
 ## Install / sync on another machine
 
-Clone directly into the OpenCode skills directory:
+This skill lives in the **DAHLS/agent-skills** collection. Clone the
+collection once and symlink the skills your loader discovers:
 
 ```bash
-git clone https://github.com/DAHLS/nim-development.git \
-  ~/.config/opencode/skills/nim-development
+git clone git@github.com:DAHLS/agent-skills.git ~/.agents/agent-skills
+ln -s ../agent-skills/skills/nim-development ~/.agents/skills/nim-development
 ```
+
+(Adjust both paths to where your tool expects skills; this is the layout
+used on the author's machines.) Pulling inside `~/.agents/agent-skills`
+updates every installed skill at once.
 
 ## Recording lessons (the important part)
 
@@ -45,8 +50,10 @@ version-specific behavior, append the lesson **per the rules in
 machines:
 
 ```bash
-cd ~/.config/opencode/skills/nim-development
-git add references/nim4friends.txt references/nim4friends_rules.md references/trap-inbox.md
+cd ~/.agents/agent-skills
+git add skills/nim-development/references/nim4friends.txt \
+        skills/nim-development/references/nim4friends_rules.md \
+        skills/nim-development/references/trap-inbox.md
 git commit -m "nim4friends: <what you learned>"
 git push
 ```
