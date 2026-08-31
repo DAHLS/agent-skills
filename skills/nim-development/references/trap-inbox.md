@@ -30,3 +30,13 @@ Fix: gate on `classify` instead:
 func finite(x: float64): bool {.inline.} =
   classify(x) in {fcNormal, fcSubnormal, fcZero, fcNegZero}
 ```
+
+[footgun] `std/exitcodes` does not exist — exit codes are `quit(int)` from `system` (Nim 2.2.4)
+  Hallucinated module name: guessing `import std/exitcodes` for CLI exit codes fails at compile:
+    Error: cannot open file: std/exitcodes
+  Fix: no import needed — `quit(n)` is defined in `system` and available everywhere:
+    proc main() =
+      if args.len != 2:
+        stderr.writeLine("usage: ...")
+        quit(1)
+      quit(runScenario(args[1]))
