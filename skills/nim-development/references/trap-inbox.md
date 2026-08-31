@@ -30,3 +30,13 @@ Fix: gate on `classify` instead:
 func finite(x: float64): bool {.inline.} =
   classify(x) in {fcNormal, fcSubnormal, fcZero, fcNegZero}
 ```
+
+[cli] `nim check` accepts only ONE file per invocation (Nim 2.2.4)
+
+Trap: batch-style checking a project: `nim check --styleCheck:error src/a.nim src/b.nim`.
+Symptom: compile error `Error: arguments can only be given if the '--run'
+option is selected` (misleading — suggests a `--run` problem, not an
+argument-count problem).
+Fix: one file per invocation (`nim check --styleCheck:error src/a.nim`,
+then `src/b.nim`), or use `nim check project.nim` where an entry module
+imports the rest.
