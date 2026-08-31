@@ -51,3 +51,18 @@ file; the stream overload asserts on nil (Nim 2.2.4)
   `=>` operator. mapIt's parameter is already each element: use `it`
   directly (`mapIt(it * 2.0)`), or `newSeqWith(n, 300.0)` for constant
   fills.
+
+[modules] Recursive imports fail only for some import orders (Nim 2.2.4)
+  Two modules importing each other (a imports b for a type, b imports a
+  for another type) compile cleanly when the entry file imports them in
+  one order and fail in the other, with a misleading error pointing at a
+  name:
+    src/io.nim(115, 22) Error: undeclared identifier: 'PaceSegment'
+    This might be caused by a recursive module dependency:
+    src/integrator.nim imports src/io.nim
+    src/io.nim imports src/integrator.nim
+  The cycle is real, but it usually hides an *unused* import — integrator.nim
+  imported io without referencing anything from it. Remove the unused
+  import rather than restructuring; a cycle only survives unnoticed while
+  some import order happens to resolve it, so CI must compile tests in
+  every import order or the trap resurfaces later.
