@@ -13,7 +13,7 @@ risk: safe
 
 **Read `references/nim4friends_rules.md` in full before anything else —
 mandatory.** It governs how you read the canon (`nim4friends.txt`) and
-where candidates go (`trap-inbox.md`). All three ship in the same repo as
+where candidates go (`trap-inbox.txt`). All three ship in the same repo as
 this skill — **do not assume the entries file is empty**. This skill does
 not repeat those entries; it complements them with decision-making and a
 way to learn *new* traps correctly.
@@ -155,7 +155,7 @@ Qualifying events:
 
 ### How to record
 
-Append your **candidate** to `references/trap-inbox.md` following **the ADDING
+Append your **candidate** to `references/trap-inbox.txt` following **the ADDING
 rules in `references/nim4friends_rules.md`** (read it in full before writing).
 
 The inbox is unverified staging — you write here, you do **not** read here for
@@ -166,12 +166,12 @@ verify-then-move.
 
 ### Close the loop (this repo)
 
-`references/nim4friends.txt` and `references/trap-inbox.md` live in a git repo.
+`references/nim4friends.txt` and `references/trap-inbox.txt` live in a git repo.
 After appending a candidate (or editing the rules file), commit and push so it
 reaches your other machines:
 
 ```
-git -C ~/.agents/skills/nim-development add references/nim4friends.txt references/nim4friends_rules.md references/trap-inbox.md
+git -C ~/.agents/skills/nim-development add references/nim4friends.txt references/nim4friends_rules.md references/trap-inbox.txt
 git -C ~/.agents/skills/nim-development commit -m "nim4friends: <what you learned>"
 git -C ~/.agents/skills/nim-development push
 ```
@@ -328,7 +328,7 @@ Two compiler errors recur constantly and are easy to misread:
 - [ ] Selected build flags for this context (release keeps checks)?
 - [ ] Handlers use `except CatchableError`?
 - [ ] Ran `nimpretty` (format) and `nim check --styleCheck:error`?
-- [ ] **Recorded any newly-learned trap** in `references/trap-inbox.md` and committed/pushed it? (mandatory if you hit an error, a silent-wrong result, or a version-specific behavior — see [Recording lessons](#recording-lessons-mandatory))
+- [ ] **Recorded any newly-learned trap** in `references/trap-inbox.txt` and committed/pushed it? (mandatory if you hit an error, a silent-wrong result, or a version-specific behavior — see [Recording lessons](#recording-lessons-mandatory))
 
 ## Limitations
 

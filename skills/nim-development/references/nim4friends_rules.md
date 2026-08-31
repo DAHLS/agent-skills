@@ -23,7 +23,7 @@ Titles are the awareness layer; bodies are the detail layer.
 
 ## Adding an entry
 
-New entries are **candidates**: you write them to `trap-inbox.md`, and only the
+New entries are **candidates**: you write them to `trap-inbox.txt`, and only the
 owner promotes them into the canon `nim4friends.txt` after verifying them.
 Write the candidate exactly as if it were going straight into canon (the ADDING
 rules below), so promotion is a verify-then-move, not a rewrite.
@@ -48,7 +48,7 @@ rules below), so promotion is a verify-then-move, not a rewrite.
 5. **Placement** — grep `nim4friends.txt` (verified canon) for the API/flag
    first. If an entry on it exists, extend it by reference ("extends the X
    entry") instead of duplicating. Otherwise append your **candidate** at the
-   end of `trap-inbox.md` — not canon. Position carries no meaning; the
+   end of `trap-inbox.txt` — not canon. Position carries no meaning; the
    `[tag]` is the retrieval key, not layout.
 6. **Versioning** — note the Nim version when behavior is version-dependent
    (e.g. "Nim 2.0+").
@@ -68,7 +68,7 @@ rules below), so promotion is a verify-then-move, not a rewrite.
 
 ## Promoting (owner only)
 
-Move a candidate from `trap-inbox.md` into the canon `nim4friends.txt`:
+Move a candidate from `trap-inbox.txt` into the canon `nim4friends.txt`:
 
 1. **Verify, don't trust** — reproduce the fix on the installed Nim version.
 2. **Falsify the counterfactual too** — if the entry claims what the API does
@@ -78,7 +78,7 @@ Move a candidate from `trap-inbox.md` into the canon `nim4friends.txt`:
 3. **Resolve placement** — grep canon for the API/flag; extend an existing
    entry by reference or place it under the right `[tag]`.
 4. **Promote & clear** — move the verified entry into `nim4friends.txt`, then
-   remove it from `trap-inbox.md`.
+   remove it from `trap-inbox.txt`.
 5. **Commit both files** — see SKILL.md "Close the loop".
 
 ## Categories (add new as needed)
