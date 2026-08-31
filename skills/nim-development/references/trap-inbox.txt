@@ -85,3 +85,8 @@ file; the stream overload asserts on nil (Nim 2.2.4)
   suite B's body, even though the definition is 40 lines above in the
   same file. Fix: hoist shared consts/procs to module level (outside the
   suite), or duplicate them per suite. (Observed Nim 2.2.4, std/unittest.)
+
+  (Recurrence 2026-08-31, same trap, same file: a const declared inside
+  suite "Rider schema strictness" reused by a later tuning_log suite —
+  "undeclared identifier: 'riderScenarioTemplate'" with spell-suggest
+  pointing at the top-level twin. Confirms the hoist-to-module-level fix.)
