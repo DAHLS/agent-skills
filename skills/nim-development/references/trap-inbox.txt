@@ -66,3 +66,22 @@ file; the stream overload asserts on nil (Nim 2.2.4)
   import rather than restructuring; a cycle only survives unnoticed while
   some import order happens to resolve it, so CI must compile tests in
   every import order or the trap resurfaces later.
+
+[idiom] triple-quoted string literals do NOT process escape sequences
+  Triple-quoted literals ("""...""") keep backslash sequences as-is;
+  only r"" differs from "" in escape handling, not """ from "". Symptom:
+  a TOML/regex test literal written as """s = "a\tb"""" put two
+  characters (\, t) on disk where one TAB was intended — the parser
+  under test "wrongly" rejected or mis-parsed, and the test failure
+  pointed at the code, not the literal. Verified on Nim 2.2.4 with
+  echo repr("""a\\tb""") -> "a\\\\tb" (both backslashes retained).
+  Fix: build such fixtures from an ordinary "..." literal where \t, \n,
+  \\ are processed, or concatenate: "[rider]\n\ns = \"a\\tb\"\n".
+
+[footgun] symbols declared inside `suite` are invisible to later suites
+  unittest's `suite` is a template, so consts and helper procs declared
+  inside it are scoped to that suite. Symptom: a helper defined in suite
+  A and reused in suite B fails with "undeclared identifier" pointing at
+  suite B's body, even though the definition is 40 lines above in the
+  same file. Fix: hoist shared consts/procs to module level (outside the
+  suite), or duplicate them per suite. (Observed Nim 2.2.4, std/unittest.)
