@@ -90,3 +90,14 @@ file; the stream overload asserts on nil (Nim 2.2.4)
   suite "Rider schema strictness" reused by a later tuning_log suite —
   "undeclared identifier: 'riderScenarioTemplate'" with spell-suggest
   pointing at the top-level twin. Confirms the hoist-to-module-level fix.)
+
+[footgun] `newSeqWith` lives in `std/sequtils`, not `system` (Nim 2.2.4)
+  Extends the `[footgun] filterIt lives in std/sequtils` entry (same trap
+  class, different symbol). A test file importing only `std/[unittest, os,
+  math]` that calls `newSeqWith(120, 400.0)` fails with:
+    Error: undeclared identifier: 'newSeqWith'
+    candidates (edit distance, scope distance); see '--spellSuggest':
+     (4, 7): 'newSeq'
+  Fix: add `std/sequtils` to the import list. Generalization: seq
+  constructors/builders (`newSeqWith`, `mapIt`, `filterIt`, `toSeq`) are
+  all in sequtils — `system` auto-imports none of them.
