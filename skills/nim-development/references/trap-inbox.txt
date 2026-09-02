@@ -32,3 +32,14 @@ so promotion is a verify-then-move, not a rewrite.
     proc baseline(): Params = Params(massKg: 61.0, sampleStepM: 10.0, ...)
     var p = baseline()
     p.crr = 0.0035
+[footgun] `1.0 - x` rounds to exactly 1.0 once x < machine epsilon near 1.0
+Trap: asserting `1.0 - k*exp(-t) < 1.0` (asymptote "never attained") on
+float64 — the subtraction is exact-bound by eps(1.0) ≈ 2.22e-16, so any
+subtrahend below ~1e-16 vanishes and the expression evaluates to EXACTLY
+1.0 (observed: k=0.214, t≈430 → exp underflow → result 1.0, strict
+`check f(g) < 1.0` failed with literal "was 1.0").
+Symptom: a mathematically strict inequality silently becomes equality for
+extreme inputs; unit test passes at sane inputs, fails at extreme ones.
+Fix: anchor strict inequality assertions in the physically meaningful
+regime (input magnitudes the spec covers), or compare `k*exp(-t) > 0.0`
+instead of `1.0 - k*exp(-t) < 1.0`.
