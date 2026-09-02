@@ -152,3 +152,34 @@ test yet `nim c -r` reported "execution of an external program failed".
 Fix: check the exit code, not just [OK] lines; put `checkpoint(needle)`
 before each helper `check` so the bare line is attributable, and treat
 any "Check failed:" output as a hard failure.
+
+[footgun] `for k in t.keys` iterates a Table in hash order — the key
+your error names is arbitrary
+Trap: a validation/error-reporting loop over `Table[string, ...]` keys
+that raises on the FIRST offending key.
+Symptom: test asserts the message names key "cp_w" but the raised error
+names "start_offset_m" — insertion order is NOT iteration order
+(std/tables, unordered hashing; all Nim 2.x).
+Fix: don't rely on iteration order for which error fires. Sort or
+deliberately check known keys first:
+    for k in toSeq(t.keys).sorted():  # deterministic offender
+      if k notin allowed: raise ...
+(or assert one key per test case, isolating the offender).
+
+[footgun] indexing an optional table with `t[name]` raises a bare
+KeyError instead of your schema error
+Trap: `doc.tables["power"]` on a document where the block is optional
+(or arrives via another spelling).
+Symptom: "Unhandled exception: key not found: power [KeyError]" — the
+clean SchemaError path never runs; exit code is the unhandled-exception
+crash, not your documented code.
+Fix: branch on membership before indexing:
+    if name in doc.tables: ... doc.tables[name] ...
+    # or: doc.tables.getOrDefault(name, TomlTable())
+
+[build] `nim check` accepts exactly ONE file argument
+Trap: `nim check --styleCheck:error a.nim b.nim c.nim`.
+Symptom: "Error: arguments can only be given if the '--run' option is
+selected" — looks like a flag conflict, is actually the multi-file arg.
+Fix: loop one file per invocation:
+    for f in src/*.nim tests/*.nim: nim check --styleCheck:error $f
