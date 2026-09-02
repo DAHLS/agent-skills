@@ -32,8 +32,7 @@ so promotion is a verify-then-move, not a rewrite.
   The actual cause is the argument count. Check one file per invocation,
   or check an entry module that imports the rest of the project.
 
-[parsecsv] `CsvParser.open` string overload raises CsvError on a missing
-file; the stream overload asserts on nil (Nim 2.2.4)
+[parsecsv] `CsvParser.open` string overload raises CsvError on a missing file; the stream overload asserts on nil (Nim 2.2.4)
   Opening via `p.open(newFileStream(f, fmRead), f)` crashes when the file
   is missing, because `newFileStream` returns nil instead of raising:
   `Error: unhandled exception: lexbase.nim(141, 9) 'input != nil'`.
@@ -102,55 +101,41 @@ file; the stream overload asserts on nil (Nim 2.2.4)
   constructors/builders (`newSeqWith`, `mapIt`, `filterIt`, `toSeq`) are
   all in sequtils — `system` auto-imports none of them.
 
----
-
-## [nim] [lang] for-loop tuple unpacking vs tuple-typed arrays (Nim 2.2.4)
-
-Hit while iterating `for bad, key in [("cp_w = 0.0", "cp_w"), ...]` in a
-unittest. Compile error:
-
+[footgun] for-loop tuple unpacking vs tuple-typed arrays (Nim 2.2.4)
+  Hit while iterating `for bad, key in [("cp_w = 0.0", "cp_w"), ...]` in a
+  unittest. Compile error:
     Error: type mismatch
     Expression: key & " ="
       [1] key: (string, string)
-
-The two-variable unpacking did NOT happen — `key` was the whole tuple.
-(Nim's tuple-unpacking in `for` loops applies to the *iteration variable*
-when items() yields tuples; in this instance the literal's element type
-was inferred as an unnamed tuple and the two-name form silently bound a
-tuple to the second name.) Fix pattern that compiled first try:
-
+  The two-variable unpacking did NOT happen — `key` was the whole tuple.
+  (Nim's tuple-unpacking in `for` loops applies to the *iteration variable*
+  when items() yields tuples; in this instance the literal's element type
+  was inferred as an unnamed tuple and the two-name form silently bound a
+  tuple to the second name.) Fix pattern that compiled first try:
     for pair in [...]:
       let bad = pair[0]; let key = pair[1]
 
-## [nim] [stdlib-strutils] replace() has NO occurrence-count parameter
-
-`strutils.replace(s, sub, by)` is the only string overload; there is no
-`replace(s, sub, by, n)` (that's Python). Passing a 4th arg:
-
+[footgun] replace() has NO occurrence-count parameter
+  `strutils.replace(s, sub, by)` is the only string overload; there is no
+  `replace(s, sub, by, n)` (that's Python). Passing a 4th arg:
     Error: type mismatch ... func replace(s, sub: string; by = ""): string
     extra argument given
+  Use a manual single-substring replace (find + substr) if you need
+  first-occurrence-only semantics.
 
-Use a manual single-substring replace (find + substr) if you need
-first-occurrence-only semantics.
-
-## [nim] [lang] proc call order DOES matter across a module (Nim 2.2.4)
-
-Contrary to the "procs are hoisted within a module" prior, calling
-`buildTuningLog` from a `writeSummaryPower` defined EARLIER in the same
-module failed:
-
+[footgun] proc call order DOES matter across a module (Nim 2.2.4)
+  Contrary to the "procs are hoisted within a module" prior, calling
+  `buildTuningLog` from a `writeSummaryPower` defined EARLIER in the same
+  module failed:
     Error: undeclared identifier: 'buildTuningLog'
+  with spell-suggest garbage. Same module, module-scope proc — still
+  rejected. Reordering the callee above the caller fixed it. (Suspect:
+  mutual-recursion carve-outs are narrower than assumed; don't rely on
+  forward use at module scope without `forward`.)
 
-with spell-suggest garbage. Same module, module-scope proc — still
-rejected. Reordering the callee above the caller fixed it. (Suspect:
-mutual-recursion carve-outs are narrower than assumed; don't rely on
-forward use at module scope without `forward`.)
-
-## [nim] [stdlib-json] %* macro cannot take a heterogeneous if/else ternary
-
-`%*{"k": if cond: x else: newJNull()}` — "type mismatch: float and
-JsonNode". The macro evaluates the expression uniformly, so both branches
-must share a type. Precompute the node:
-
+[json] %* macro cannot take a heterogeneous if/else ternary
+  `%*{"k": if cond: x else: newJNull()}` — "type mismatch: float and
+  JsonNode". The macro evaluates the expression uniformly, so both branches
+  must share a type. Precompute the node:
     let j = if cond: %(x) else: newJNull()
     %*{"k": j}
