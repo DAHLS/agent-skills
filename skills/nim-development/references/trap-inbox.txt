@@ -43,3 +43,21 @@ extreme inputs; unit test passes at sane inputs, fails at extreme ones.
 Fix: anchor strict inequality assertions in the physically meaningful
 regime (input magnitudes the spec covers), or compare `k*exp(-t) > 0.0`
 instead of `1.0 - k*exp(-t) < 1.0`.
+[footgun] unittest `fail()` bumps the global failure count WITHOUT marking
+  the current test FAILED — suite prints all [OK] but exits 1.
+  Trap: a test helper (typically an expect-error helper) calls `fail()` on
+  the unexpected-accept path inside `try/except`; if the expected exception
+  stops being raised (e.g. you lifted a not-implemented boundary),
+  std/unittest's `fail()` increments the process failure counter but does
+  not set the current test's status, so the label still stamps [OK].
+  Symptom: run prints e.g. 84 `  [OK]` lines, zero `[FAILED]`/`Check
+  failed` lines, yet the binary exits 1 (`nim c -r` then reports "Error:
+  execution of an external program failed" with no visible cause).
+  Fix: never gate an expect-error helper on `fail()` alone — make the
+  accept path a hard `check` with a message, or assert the positive
+  contract when a boundary is lifted:
+    try:
+      discard load(path)
+      check false  # prints "Check failed" with the file:line
+    except SchemaError as e:
+      check e.msg.contains(needle)
