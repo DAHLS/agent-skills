@@ -871,3 +871,119 @@
   dateTime signature is only a *parameter name*, not a field on DateTime. Fix:
     dateTime(y, m, d, ref.hour, ref.minute, ref.second, 0, timezone(reference))
   `timezone(dt)` is the public accessor; there is no `.zone` field.
+
+[footgun] No `isFinite` for floats in `std/math` (Nim 2.2.4)
+  Reaching for `x.isFinite` (habit from other languages) does not compile:
+  `Error: undeclared field: 'isFinite' for type system.float64`.
+  Gate on `classify` instead:
+    func finite(x: float64): bool {.inline.} =
+      classify(x) in {fcNormal, fcSubnormal, fcZero, fcNegZero}
+
+[parsecsv] `CsvParser.open` string overload raises CsvError on a missing file; the stream overload asserts on nil (Nim 2.2.4)
+  Opening via `p.open(newFileStream(f, fmRead), f)` crashes when the file
+  is missing, because `newFileStream` returns nil instead of raising:
+  `Error: unhandled exception: lexbase.nim(141, 9) 'input != nil'`.
+  Use the string overload instead — a missing file then raises
+  `CsvError: Error: cannot open: <path>` (CsvError is `object of IOError`),
+  so one `except IOError` handler covers it and the message names the path:
+    var p: CsvParser
+    p.open(path)          # missing file -> CsvError "cannot open: <path>"
+    p.readHeaderRow()
+    while p.readRow(): discard p.rowEntry("col")  # header-keyed access
+
+[sequtils] `mapIt` takes an expression over `it`, not a lambda (Nim 2.2.4)
+  Writing `toSeq(0..<n).mapIt(_ => 300.0)` (JS/Python muscle memory) fails
+  at the call site with `Error: undeclared identifier: '=>'` — there is no
+  `=>` operator. mapIt's parameter is already each element: use `it`
+  directly (`mapIt(it * 2.0)`), or `newSeqWith(n, 300.0)` for constant
+  fills.
+
+[modules] Recursive import cycles fail only for some import orders (Nim 2.2.4)
+  Two modules importing each other compile cleanly when the entry file
+  imports them in one order and fail in the other, with a misleading
+  error pointing at a name:
+    Error: undeclared identifier: '<someProc>'
+    This might be caused by a recursive module dependency:
+    <a>.nim imports <b>.nim
+    <b>.nim imports <a>.nim
+  The cycle is real, but it usually hides an *unused* import — one module
+  imports the other without referencing anything from it. Remove the
+  unused import rather than restructuring; the cycle only survives
+  unnoticed while some import order happens to resolve it, so CI must
+  compile tests in every import order or the trap resurfaces later.
+
+[idiom] triple-quoted string literals do NOT process escape sequences (Nim 2.2.4)
+  Triple-quoted literals ("""...""") keep backslash sequences as-is;
+  only r"" differs from "" in escape handling, not """ from "". Symptom:
+  a TOML/regex test literal written as """s = "a\tb"""" put two
+  characters (\, t) on disk where one TAB was intended — the parser
+  under test "wrongly" rejected or mis-parsed, and the test failure
+  pointed at the code, not the literal. Verified with
+  echo repr("""a\\tb""") -> "a\\\\tb" (both backslashes retained).
+  Fix: build such fixtures from an ordinary "..." literal where \t, \n,
+  \\ are processed, or concatenate: "[section]\n\ns = \"a\\tb\"\n".
+
+[footgun] symbols declared inside `suite` are invisible to later suites (Nim 2.2.4)
+  unittest's `suite` is a template, so consts and helper procs declared
+  inside it are scoped to that suite. Symptom: a helper defined in suite
+  A and reused in suite B fails with "undeclared identifier" pointing at
+  suite B's body, even though the definition is 40 lines above in the
+  same file. Fix: hoist shared consts/procs to module level (outside the
+  suite), or duplicate them per suite. (std/unittest.)
+
+  (Recurrence 2026-08-31, same trap, same file: a const declared inside
+  one suite and reused by a later suite — "undeclared identifier" with
+  spell-suggest pointing at the top-level twin. Confirms the
+  hoist-to-module-level fix.)
+
+[footgun] `newSeqWith` lives in `std/sequtils`, not `system` (Nim 2.2.4)
+  Extends the `[footgun] filterIt lives in std/sequtils` entry (same trap
+  class, different symbol). A test file importing only `std/[unittest, os,
+  math]` that calls `newSeqWith(120, 400.0)` fails with:
+    Error: undeclared identifier: 'newSeqWith'
+    candidates (edit distance, scope distance); see '--spellSuggest':
+     (4, 7): 'newSeq'
+  Fix: add `std/sequtils` to the import list. Generalization: seq
+  constructors/builders (`newSeqWith`, `mapIt`, `filterIt`, `toSeq`) are
+  all in sequtils — `system` auto-imports none of them.
+
+[footgun] for-loop tuple unpacking vs tuple-typed arrays (Nim 2.2.4)
+  Hit while iterating `for bad, key in [("cp_w = 0.0", "cp_w"), ...]` in a
+  unittest. Compile error:
+    Error: type mismatch
+    Expression: key & " ="
+      [1] key: (string, string)
+  The two-variable unpacking did NOT happen — `key` was the whole tuple.
+  (Nim's tuple-unpacking in `for` loops applies to the *iteration variable*
+  when items() yields tuples; in this instance the literal's element type
+  was inferred as an unnamed tuple and the two-name form silently bound a
+  tuple to the second name.) Fix pattern that compiled first try:
+    for pair in [...]:
+      let bad = pair[0]; let key = pair[1]
+
+[footgun] replace() has NO occurrence-count parameter (Nim 2.2.4)
+  `strutils.replace(s, sub, by)` is the only string overload; there is no
+  `replace(s, sub, by, n)` (that's Python). Passing a 4th arg:
+    Error: type mismatch ... func replace(s, sub: string; by = ""): string
+    extra argument given
+  Use a manual single-substring replace (find + substr) if you need
+  first-occurrence-only semantics.
+
+[footgun] proc call order DOES matter across a module (Nim 2.2.4)
+  Contrary to the "procs are hoisted within a module" prior, calling a
+  proc from another proc defined EARLIER in the same module — plain
+  module-scope procs, no generics, no recursion — fails:
+    Error: undeclared identifier: '<callee>'
+  Same module, module-scope proc — still rejected. Reordering the callee
+  above the caller fixes it; a `forward` declaration works for genuine
+  mutual recursion. Don't rely on forward use at module scope without
+  `forward`.
+
+[json] %* macro cannot take a heterogeneous if/else ternary (Nim 2.2.4)
+  `%*{"k": if cond: x else: newJNull()}` fails:
+    Error: type mismatch: got 'JsonNode' for 'newJNull()' but expected
+    'float64 = float'
+  The if/else expression must unify its branch types before the macro
+  evaluates them. Precompute the node:
+    let j = if cond: %(x) else: newJNull()
+    %*{"k": j}
