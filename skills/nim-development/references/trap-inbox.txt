@@ -139,3 +139,16 @@ so promotion is a verify-then-move, not a rewrite.
   must share a type. Precompute the node:
     let j = if cond: %(x) else: newJNull()
     %*{"k": j}
+
+[unittest] `check`/`fail` inside a helper proc called from `test` flips
+the exit code silently — all tests still print [OK]
+Trap: std/unittest `check`/`fail`/`checkpoint` invoked in a plain proc
+that a `test` block calls.
+Symptom: binary exits 1 with every test listed as [OK]; the only trace is
+a bare "Check failed: ..." line (easy to miss among [OK] lines). Observed
+Nim 2.2.4 when a shared `expectError(text, needles)` helper ran `for n in
+needles: check e.msg.contains(n)` — the failing needle failed no visible
+test yet `nim c -r` reported "execution of an external program failed".
+Fix: check the exit code, not just [OK] lines; put `checkpoint(needle)`
+before each helper `check` so the bare line is attributable, and treat
+any "Check failed:" output as a hard failure.
