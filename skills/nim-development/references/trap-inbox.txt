@@ -17,3 +17,18 @@ inline indented snippets — no fenced code blocks, no label scaffolding),
 so promotion is a verify-then-move, not a rewrite.
 
 ---
+
+[footgun] `var obj: Obj` zero-fills every float field — default-constructed
+  records read as real data in diff/baseline assertions.
+  Trap: Nim object default initialization gives 0.0 for all float fields
+  (and 0 for ints/enums). A test that constructs a params record with only
+  the interesting field set, then diffs ALL fields against nonzero
+  baselines, silently reports every unset field as a "deviation".
+  Symptom (unittest): `Check failed: log.len == 1` — `log.len was 8`;
+  the record's mass_kg 0.0, sample_step_m 0.0 etc. all differed from
+  their 61.0/10.0 baselines.
+  Fix: in tests, set every diffed field to its baseline explicitly (or
+  init from a baseline constructor) before overriding one field:
+    proc baseline(): Params = Params(massKg: 61.0, sampleStepM: 10.0, ...)
+    var p = baseline()
+    p.crr = 0.0035
