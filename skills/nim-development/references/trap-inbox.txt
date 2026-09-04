@@ -63,3 +63,15 @@ so promotion is a verify-then-move, not a rewrite.
       check false  # prints "Check failed" with the file:line
     except SchemaError as e:
       check e.msg.contains(needle)
+
+[idiom] Export marks are illegal on named-tuple fields (Nim 2.2.4)
+Trap: writing `FieldSample* = tuple[tS*: float, order*: seq[int]]` in a
+type section — the `*` after a tuple FIELD is not grammar.
+Symptom: compiler error at the first starred field, e.g.
+  `Error: ':' or '=' expected, but got '*'` (pointing at the `tS*:` line,
+  confusingly far from the tuple declaration line).
+Fix: star only the type name; fields stay bare:
+  `FieldSample* = tuple[tS: float, order: seq[int]]` — field access from
+  other modules works anyway because the TYPE is exported, not fields
+  (tuples have no visibility of their own). Object fields, in contrast,
+  DO need per-field `*`.
