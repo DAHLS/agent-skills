@@ -75,3 +75,17 @@ Fix: star only the type name; fields stay bare:
   other modules works anyway because the TYPE is exported, not fields
   (tuples have no visibility of their own). Object fields, in contrast,
   DO need per-field `*`.
+
+[footgun] unittest `check` breaks seq-literal type inference (Nim 2.2.4)
+  Writing a bare `@[...]` literal on the RHS of `==` INSIDE unittest's
+  `check` macro fails to compile:
+    check groupSizes(@[100.0, 92.0]) == @[3, 1]
+  Error (pointing at the check, via unittest.nim template instantiation):
+    Error: cannot infer the type of the sequence
+  The `check` macro rewrites the expression for its failure message, and
+  the literal loses the context that would fix its element type. Fix:
+  bind both sides to `let`/`var` first and compare the named seqs:
+    let a = groupSizes(@[100.0, 92.0])
+    check a == @[3, 1]
+  (std/unittest; plain `if`/`doAssert` with the same literal compiles
+  fine — it is specific to the macro rewrite.)
