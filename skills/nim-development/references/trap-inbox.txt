@@ -119,3 +119,25 @@ Symptom: "type mismatch ... windCross: proc (...)" when comparing the
 variable, because a later `if windCross < 0.0` still resolves to the
 proc on some lines depending on declaration order.
 Fix: don't reuse the routine's name for the local (`let wcX = ...`).
+
+[init] Field default `= T()` applies to `T()` constructors, NOT to var/result zero-init
+  Evidence (Nim 2.2.4, minimal probe):
+    type RW = object
+      defaultM*: float = 6.0
+    type Sc = object
+      rw*: RW = RW()
+    var s: Sc
+    echo s.rw.defaultM   # 0.0   <-- zero, NOT 6.0
+    echo Sc().rw.defaultM # 6.0
+    echo RW().defaultM    # 6.0
+  Hit as a silently-wrong value: `proc loadScenario(): Scenario` used
+  `result` (zero-initialized), so `result.roadWidths.defaultM` read 0.0
+  despite the field default `= RoadWidths()`; a unit test
+  `check scen.roadWidths.defaultM == 6.0` failed. Fix: assign
+  `result.roadWidths = RoadWidths()` explicitly at the top of the proc.
+  Generalization: any field whose "default" is built from a nested type
+  with its own field defaults must be constructed explicitly for
+  `var x: T` / `result` paths — implicit defaults are unreliable there;
+  trust only `T()` constructor calls. Inner scalar defaults (e.g.
+  `defaultM*: float = 6.0` inside RW) DO apply when RW itself is
+  default-constructed via `RW()` or as a proc default parameter value.
