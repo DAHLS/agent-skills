@@ -89,3 +89,33 @@ Fix: star only the type name; fields stay bare:
     check a == @[3, 1]
   (std/unittest; plain `if`/`doAssert` with the same literal compiles
   fine — it is specific to the macro rewrite.)
+
+[idiom] Nested proc cannot capture an openArray parameter
+Trap: defining a proc inside a proc whose body references the outer
+proc's `openArray` parameter fails to compile.
+Symptom: "'alongsideY' is of type <openArray[float]> which cannot be
+captured as it would violate memory safety" (Nim 2.2.4).
+Fix: hoist the helper to module level and pass the openArray as its own
+parameter; a closure over openArray is never legal, even read-only.
+  proc accessible(cand: float): bool = ... alongsideY ...  # fails
+  proc accessible(cand: float; ys: openArray[float]): bool = ...  # ok
+
+[idiom] Statement continuation cannot start a line with a binary operator
+Trap: breaking a long expression so a continuation line begins with
+`- foo(...)` is not parsed as subtraction continuation.
+Symptom: "expected: ')', but got: '-'" / "invalid indentation".
+Fix: bind the operands into named lets first, or break after the
+operator (keep `-` on the previous line end), or wrap in parens with
+each line a full operand:
+  let num = (fHi - fLo) / (2.0 * h)   # not: let num = (fA(...)
+                                    #        - fB(...)) / ...
+
+[ambiguity] `let x = someProc(...)` shadows an imported proc named x
+Trap: naming a local after a routine you also call — `let windCross =
+windCross(...)` — resolves (RHS binds before the name exists), but any
+LATER use of the bare name in the same scope referring to the proc
+fails confusingly.
+Symptom: "type mismatch ... windCross: proc (...)" when comparing the
+variable, because a later `if windCross < 0.0` still resolves to the
+proc on some lines depending on declaration order.
+Fix: don't reuse the routine's name for the local (`let wcX = ...`).
