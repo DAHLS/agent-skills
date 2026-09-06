@@ -1,6 +1,6 @@
 ---
 name: building-block-search
-description: Use when a structured search of research literature is called for — building a systematic-review search strategy, translating a research question into bibliographic database queries, or when a literature search returns far too much or mostly off-topic material and search terms must be kept, changed, or removed.
+description: Use when a structured search of research literature is called for — building a systematic-review search strategy, translating a research question into bibliographic database queries, when a literature search returns far too much or mostly off-topic material and search terms must be kept, changed, or removed, or when an already-exported result set must be mechanically screened down to on-topic records.
 ---
 
 # Building-Block Literature Search
@@ -79,8 +79,97 @@ If results look wrong, suspect the query mechanics in this order:
    IDs client-side (lossless by set algebra).
 5. **Corpus composition** — gray literature, preprints, expansion corpora
    add weak-metadata tails; know what the database indexes.
+6. **Index coverage** — a seed that misses may simply not be indexed by
+   that database at all. Look the record up directly before diagnosing the
+   query: a miss is either a coverage fact (disclose, cross-cover with
+   another database) or a query fact (fix blocks/pegs). Never treat the
+   first as the second.
 
 Establish these for any database before judging term quality.
+
+## Mechanical screening of an exported set
+
+Step 7's exit state — "screenable" — is this stage's input. Core
+principle: **drop only on confidence; audit by markers, not at random.**
+The set exists to over-return; screening may remove the obviously
+unrelated, never an uncertain record. A drop rule cites a *subject
+family*, never a lone topic word.
+
+### Ground rules
+
+1. **Scrape in place — never rebase.** If the set looks wrong, that is a
+   search decision (return to the algorithm), not a screening one. A
+   rebased search must not be able to lose a relevant paper.
+2. **Owner boundary calls first.** Whole families are policy, not
+   evidence — which adjacent application domains belong (human factors?
+   policy? clinical?), and which record types are non-substantive
+   (errata, retractions). Ask, encode the answers as rules, record them
+   beside the output.
+3. **Original schema and row order.** The reduced set is a pre-screen for
+   human reading: residual off-topic records at a few percent are
+   acceptable — silent loss is not.
+
+### Record-level polysemy — false-marker shapes
+
+Block polysemy (step 4's pegs) recurs inside records, one level down:
+the same string matches a different subject. The recurring shapes:
+
+| Shape | Example | Fix |
+| --- | --- | --- |
+| substring containment | `rat` inside *ratio*, *operate*; `star` inside *startle* | `\b` word boundaries everywhere, case-insensitive (ALL-CAPS records exist) |
+| derivational family | *culture / cultured / subculture* (lab technique vs sociology); *wave* inside *wavelength, waveguide* | enumerate forms, never stem (`culture|cultures|cultured|culturing`) |
+| idiomatic collocation | *in the wake of* an event; *current* affairs vs electric current; *bridge the gap* | match the sense (fluid `wake …`), anchor the phrase (`barriers to/for`), or exempt by subject |
+| model/method jargon | *random forest* (the classifier) riding into woodland-ecology searches; *neural network* into neurology; *genetic algorithm* into genetics | strip the method name before matching when a block term is also an ordinary word in the foreign field |
+| cross-domain homograph | *battery* (assault vs electrochemistry), *virus* (computing vs biology), *agent* (multi-agent systems vs chemical) | count- or title-strength rules below |
+
+### Field strength: title vs blob
+
+The title carries the subject; the abstract carries mentions. Key
+exemptions and drops keyed to where the marker sits:
+
+- Behavioural titles (*attitudes, adoption, policy, human factors*)
+  stay dropped even when the **abstract** mentions the core phenomenon
+  once. Title-level phenomenon language — measurement, modelling, the
+  core term as the *object* of an action ("effect of X on \<the target
+  subject\>", "\<target subject\> measurements") — is the exemption.
+- Foreign-subject titles are rescued only by **title-level** target
+  markers; an abstract-level mention does not turn foreign-subject work
+  into target literature.
+- A **single** marker hit deep in a blob is not evidence (a stray
+  metaphorical use of the core term): require ≥ 2 family hits or a
+  title-level hit. Records failing that still route to a
+  **keep-bucket** (never a blind drop) when they pair the core term
+  with application vocabulary the owner has bounded as relevant.
+
+### Audit asymmetry
+
+- **Random per-rule samples validate precision.** ~15 per drop rule,
+  every one read; expected ~100% junk. In one full export pass this
+  found zero faults.
+- **Marker-stratified audits validate recall.** Re-pull *every* dropped
+  record still carrying strong target-domain markers and read them all.
+  The same pass found five real losses there: a core-dynamics paper
+  killed by a "behaviour" title word, two interaction studies killed by
+  "interactions", papers using a legitimate short form absent from the
+  marker list, and a false idiom hit.
+- **Rescue by widening the keep path.** Found a loss? Add an exemption
+  or route to the keep-bucket — never silently relax the drop rule, and
+  log each rescue beside it.
+
+### Budget and certificate
+
+Every record accounted for: `in = Σ per-rule drops + duplicates + out`,
+reconciled by the script, not by hand. Re-run the seed-recall check
+**on the output file**, not just on the search. Export mechanics first:
+rows vs run count, duplicate DOIs, the DOI-less tail (dedupe by DOI,
+then normalized title+year cross-dedupe, keeping the DOI row over its
+DOI-less twin). A seed absent from the database never appears in any
+export — coverage fact, disclosed, not a screening failure.
+
+**Screening deliverable:** reduced dataset (original schema/order) +
+provenance log — owner decisions, rule table with counts, per-rule
+samples, marker-audit findings and rescues, the keep-bucket listing,
+budget reconciliation — plus the reproducible script that produced it.
 
 ## Deliverable
 
@@ -102,3 +191,8 @@ them.
 | Diagnosing a surprising count as "broken database" | Probe mechanics: scope → stemming → precedence → length → corpus |
 | Term lists written with slashes and bare abbreviations | Spell every variant out; OR-join; quote multi-word phrases |
 | Trusting a count without looking at results | Sample titles whenever a number surprises you |
+| Random samples all junk → rules declared safe | Random validates precision only; audit dropped records by target-domain markers for recall |
+| Drop rule keyed to a topic word ("safety", "behaviour") | Words are not subjects; structure = marker + absence of a title-level exemption |
+| Relaxing a drop rule after a found loss | Widen the keep path (exemption or keep-bucket) and re-audit; relaxation re-opens the flood |
+| Stem/substring matching assumed safe | Homographs and containment (`rat` in *ratio*); enumerate forms, explicit boundaries, case-insensitive |
+| Dedupe by DOI alone | DOI-less twins and preprint/publisher dupes; normalized title+year cross-dedupe keeping the DOI row |
