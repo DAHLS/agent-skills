@@ -141,3 +141,18 @@ Fix: don't reuse the routine's name for the local (`let wcX = ...`).
   trust only `T()` constructor calls. Inner scalar defaults (e.g.
   `defaultM*: float = 6.0` inside RW) DO apply when RW itself is
   default-constructed via `RW()` or as a proc default parameter value.
+
+[float] Bitwise `==` on a float round-trip breaks when constants change
+Trap: a unittest pinned `1.0 - (1.0 - x) * 1.0 == x` (bitwise `==`,
+no epsilon) over a sweep of table-interpolated float64 values. The
+identity holds only by accident of the previous table's constants:
+`1.0 - x` rounds, then `1.0 - (rounded)` does NOT always return `x`
+exactly. Swapping the pinned constants (table re-anchor) made the
+check fail on some sweep points even though the code path was
+unchanged and mathematically identity.
+Symptom: `Check failed: composedMultiplier(g, n, 0.0, beta) ==
+groupMultiplier(g, n)` at some interpolated g only, all others passing.
+Fix: pin structural identity with an explicit branch (return early when
+the identity factor is exactly 1.0) or compare with a tolerance;
+bitwise float equality across an arithmetic detour is a constant-value
+coincidence, not a guarantee. (Nim 2.2.4, float64)
