@@ -987,3 +987,97 @@
   evaluates them. Precompute the node:
     let j = if cond: %(x) else: newJNull()
     %*{"k": j}
+
+[init] `var x: T` zero-fills every field — unset floats read as real data
+  in diff-all-fields test assertions (Nim 2.2.4)
+  Trap: `var p: Params` gives 0.0 for all float fields (0 for
+  ints/enums). A test that sets only the field under test, then diffs
+  ALL fields against nonzero baselines, reports every untouched field
+  as a deviation.
+  Symptom: check failure listing e.g. `p.threshold was 0.0` against a
+  61.0 baseline, for fields the test never set.
+  Fix: construct from a baseline and override the one field:
+    proc baseline(): Params = Params(threshold: 61.0, step: 10.0)
+    var p = baseline()
+    p.rate = 0.0035
+  (extends the [init] `= T()` field-defaults entry: zero-init is also
+  why those defaults never run on the `var`/`result` path)
+
+[init] Field default `= T()` runs for `T()` constructors only, NOT for
+  `var x: T` / implicit `result` zero-init (Nim 2.2.4)
+  Probe:
+    type RW = object
+      defaultM*: float = 6.0
+    type Sc = object
+      rw*: RW = RW()
+    var s: Sc
+    echo s.rw.defaultM     # 0.0  <-- nested default skipped
+    echo Sc().rw.defaultM  # 6.0
+  A proc returning via implicit `result` reads the same 0.0 — silently
+  wrong values, no warning. Fix: assign such fields explicitly
+  (`result.rw = RW()`). Inner scalar defaults (the 6.0) DO apply when
+  the owning object itself is constructed via `T()`; trust field
+  defaults only on the `T()` path, never on `var`/`result`.
+
+[footgun] unittest `fail()`/`check` inside a helper PROC stamps [OK] but
+  exits 1 (Nim 2.2.4)
+  Trap: `test` injects `testStatusIMPL` into the test body's lexical
+  scope; `fail()` guards with `when declared(testStatusIMPL)` and else
+  just calls `setProgramResult 1` (unittest.nim). A check/fail inside a
+  helper PROC can't see the injected var — classic case: an
+  expect-error helper whose expected exception stopped being raised.
+  Symptom: every test prints [OK], zero [FAILED], yet the binary exits
+  1 ("Error: execution of an external program failed", no cause shown).
+  A proc-level `check false` prints "Check failed" but STILL stamps [OK].
+  Fix: make the helper a `template` (inlines into the test body, so the
+  failure marks [FAILED]) or `raise` on the unexpected-accept path;
+  never rely on `fail()` from a proc.
+
+[idiom] Export `*` is illegal on named-tuple FIELDS — star the type only
+  (Nim 2.2.4)
+  `type Sample* = tuple[name*: string, order*: seq[int]]` fails:
+    Error: ':' or '=' expected, but got '*'
+  pointing at the first starred field. Tuple fields have no visibility
+  of their own: once the TYPE is starred, other modules construct and
+  read fields freely — but with tuple syntax, not object-constructor
+  syntax:
+    var f: Sample = (name: "a", order: @[1])
+  Object fields, in contrast, DO need per-field `*`; an unstarred field
+  read from another module errors "undeclared field: 'a' for type
+  <module>.O".
+
+[idiom] A nested proc cannot capture an `openArray` parameter (Nim 2.2.4)
+  A proc defined inside a proc whose body references the outer proc's
+  openArray param fails to compile:
+    Error: 'ys' is of type <openArray[float]> which cannot be captured
+    as it would violate memory safety
+  (the error further suggests `<ref T>`). A closure over an openArray
+  is never legal, even read-only. Fix: hoist the helper to module scope
+  and pass the openArray as its own parameter:
+    proc ok(cand: float; ys: openArray[float]): bool = ys.len > 0
+    proc outer(xs: openArray[float]): bool = ok(1.0, xs)
+
+[idiom] A continuation line cannot START with a binary operator (Nim 2.2.4)
+  Breaking a long expression so a continuation line begins with
+  `- foo(...)` is not parsed as subtraction continuation:
+    Error: expected: ')', but got: '-'
+  Fix: keep the operator at the END of the previous line, wrap in
+  parens so each line is a full operand, or bind operands to named
+  lets first:
+    let num = (fHi - fLo) / (2.0 * h)   # not: let num = (fA(...)
+                                       #        - fB(...)) / ...
+
+[float] Bitwise `==` on a float round-trip is a constant-coincidence,
+  not an identity (Nim 2.2.4)
+  Trap: a unittest pinned `check 1.0 - (1.0 - x) * 1.0 == x` (bitwise
+  ==, no epsilon) over interpolated float64 values. The double
+  rounding (`1.0 - x` rounds, then `1.0 - rounded` rounds again) does
+  not always return x — verified 335 of 1000 x = i/1000 sweep values
+  mismatch (first at 0.001). The check passes only by accident of the
+  constants it was written under; re-anchoring them fails "random"
+  sweep points with unchanged code.
+  Symptom: `Check failed: composed(x, 0.0) == direct(x)` at some
+  interpolated x only, all others passing.
+  Fix: pin the identity with an explicit early-return branch (return
+  early when the identity factor is exactly 1.0) or compare with a
+  tolerance — never bitwise equality across an arithmetic detour.

@@ -96,6 +96,8 @@ Move a candidate from `trap-inbox.txt` into the canon `nim4friends.txt`:
 | `[os]` | std/os module |
 | `[db]` | stdlib `db_sqlite` (removed in 2.x → `db_connector`), SQLite FFI, database trap |
 | `[exn]` | Exception model and `except` handlers |
+| `[init]` | Object default initialization and field default values |
+| `[float]` | Float arithmetic/precision traps in assertions |
 | `[idiom]` | Style/convention lessons |
 | `[footgun]` | Silent surprises that cost a debug cycle |
 | `[cli]` | CLI argument parsing |
