@@ -7,17 +7,10 @@ projects, maintained across many LLM sessions and models.
 
 Read this file in full — it is short and stable.
 
-For `nim4friends.txt`, choose by size (check with `wc -l`):
-
-- **Under ~1000 lines** — reading the file in full is fine. The context
-  cost is small and full awareness of all entries can help.
-- **Over ~1000 lines** — do NOT read it in full. `grep -n '^\['` lists
-  every `[tag]` title with line numbers; read only the bodies for `[tag]`s
-  relevant to your task. The grep-first discipline exists for this scale —
-  at small sizes skipping it is harmless, at large sizes it's what keeps
-  the file usable.
-- **Debugging at any size** — grep by `[tag]` and error text to jump
-  straight to relevant entries.
+For `nim4friends.txt` — over 1000 lines and growing; do NOT read it in
+full. `grep -n '^\['` lists every `[tag]` title with line numbers; read
+only the bodies for `[tag]`s relevant to your task. When debugging,
+grep by `[tag]` and error text to jump straight to relevant entries.
 
 Titles are the awareness layer; bodies are the detail layer.
 
