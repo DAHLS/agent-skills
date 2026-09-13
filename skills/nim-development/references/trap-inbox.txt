@@ -17,17 +17,3 @@ inline indented snippets — no fenced code blocks, no label scaffolding),
 so promotion is a verify-then-move, not a rewrite.
 
 ---
-
-[idiom] two-variable for over an array-of-tuples literal binds via pairs, not destructuring
-Trap: `for a, b in [(1.0, 2.0), (3.0, 4.0)]:` does NOT destructure the
-tuple elements — arrays have a `pairs` iterator, and the two-variable
-form resolves to (index, element), so `a` is an int index (observed
-type `range 0..2(int)`) and `b` the whole tuple.
-Symptom: `Error: type mismatch` on the loop body using `a` as a float,
-e.g. `3.489 * x` with "x: range 0..2(int)" — misleading (looks like an
-int/float coercion issue, is actually a binding issue). Bites in test
-code that never compiled past earlier undeclared-identifier errors, so
-the latent form surfaces late.
-Fix: parenthesize the loop variables to force tuple destructuring:
-`for (a, b) in [(1.0, 2.0), (3.0, 4.0)]:`
-(Nim 2.2.4, verified in tests/test_physiology.nim w3-durability repair.)

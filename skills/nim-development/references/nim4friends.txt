@@ -947,19 +947,17 @@
   constructors/builders (`newSeqWith`, `mapIt`, `filterIt`, `toSeq`) are
   all in sequtils — `system` auto-imports none of them.
 
-[footgun] for-loop tuple unpacking vs tuple-typed arrays (Nim 2.2.4)
-  Hit while iterating `for bad, key in [("cp_w = 0.0", "cp_w"), ...]` in a
-  unittest. Compile error:
-    Error: type mismatch
-    Expression: key & " ="
-      [1] key: (string, string)
-  The two-variable unpacking did NOT happen — `key` was the whole tuple.
-  (Nim's tuple-unpacking in `for` loops applies to the *iteration variable*
-  when items() yields tuples; in this instance the literal's element type
-  was inferred as an unnamed tuple and the two-name form silently bound a
-  tuple to the second name.) Fix pattern that compiled first try:
-    for pair in [...]:
-      let bad = pair[0]; let key = pair[1]
+[footgun] two-variable for over array/seq of tuples binds via pairs — (index, element), NOT destructuring (Nim 2.2.4)
+  `for a, b in [(1.0, 2.0), (5.0, 6.0), (9.0, 10.0)]:` does not destructure:
+  the two-name form resolves to the `pairs` iterator, so name 1 is the int
+  index (observed type `range 0..2(int)`) and name 2 the whole tuple. Both
+  observed symptoms are misleading `type mismatch` errors:
+    Expression: 3.489 * a  →  a: range 0..2(int)    (looks like int/float coercion)
+    Expression: key & " =" →  key: (string, string) (looks like a bad tuple)
+  Both are binding problems, not type problems. Fix: parenthesize the loop
+  variables to force tuple destructuring:
+    for (a, b) in [(1.0, 2.0), (3.0, 4.0)]:
+  (Manual indexing — `let k = pair[1]` — also works but is unnecessary.)
 
 [footgun] replace() has NO occurrence-count parameter (Nim 2.2.4)
   `strutils.replace(s, sub, by)` is the only string overload; there is no
