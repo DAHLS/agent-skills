@@ -7,12 +7,12 @@ projects, maintained across many LLM sessions and models.
 
 Read this file in full — it is short and stable.
 
-For `nim4friends.txt` — over 1000 lines and growing; do NOT read it in
-full. `grep -n '^\['` lists every `[tag]` title with line numbers; read
-only the bodies for `[tag]`s relevant to your task. When debugging,
-grep by `[tag]` and error text to jump straight to relevant entries.
-
-Titles are the awareness layer; bodies are the detail layer.
+Then, before writing any Nim in this session: run
+`grep -n '^\[' nim4friends.txt` and read all title lines. This titles
+pass is mandatory, not "good to know" — titles are the awareness layer.
+Never read nim4friends.txt in full. Bodies are the detail layer: read
+one only when a title touches your task, or while debugging (grep by
+`[tag]` and error text).
 
 ## Adding an entry
 
