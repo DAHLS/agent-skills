@@ -41,3 +41,15 @@ Fix: rename the parameter (e.g. `riderBlock`); keywords like `block`,
 proc merge(b: JsonNode) = discard     # fine
 proc merge(block: JsonNode) = discard # Error: expected closing ')'
 ```
+
+[build] `nim c -o bin/rrm` fails — the output flag needs the colon form (Nim 2.2.4)
+  Trap: passing the output binary as a separate token.
+  Symptom: `Error: argument for command line option expected: '-o'`
+  Fix: `nim c -o:bin/rrm src/rrm.nim` (colon-attached value).
+
+[nimble] `nimble test` refuses a nimble file with an empty license field (nimble 0.14.x)
+  Trap: project `.nimble` written with `license = ""` (stdlib-only repo, no
+  license chosen yet).
+  Symptom: `Error: Incorrect .nimble file: ... does not contain a license field.`
+  Fix: run the test binaries directly (`nim c -r tests/tfoo.nim`) or set a
+  license string; the task's exec lines are otherwise fine.
