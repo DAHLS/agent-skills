@@ -18,23 +18,18 @@ so promotion is a verify-then-move, not a rewrite.
 
 ---
 
-[build] `--expandMacro` is silent by default AND macro-only (Nim 2.2.4)
-  `nim c --expandMacro:myMacro file.nim` prints nothing unless the hint is
-  enabled; the working invocation is:
-    nim c --hint:ExpandMacro:on --expandMacro:myMacro file.nim
-  which prints `Hint: expanded macro: 42 [ExpandMacro]` with a file:line
-  position. Templates are NOT covered — `--expandMacro` on a template
-  stays silent even with the hint on; for template semantics use a minimal
-  runtime probe (`nim c -r`). Same silent-no-op family as `--expandArc`
-  with a wrong target.
-
-[footgun] `sqrt` needs `import std/math`; not auto-imported (Nim 2.2.4)
-extends the "split needs std/strutils" entry (same mechanism). In a
-unittest file importing only std/unittest, calling sqrt() fails:
-  Error: undeclared identifier: 'sqrt'
-  candidates (edit distance, scope distance): 'set', 'shr'
-Fix: `import std/[unittest, math]`. min/max/clamp ARE in system; the
-math-routine family (sqrt, ln, exp, pow, sin...) is not.
+[build] `--expandMacro` prints its hint by default; silence means wrong name or template target (Nim 2.2.4)
+  `nim c --expandMacro:myMacro file.nim` prints
+  `file.nim(7, 13) Hint: expanded macro: 42 [ExpandMacro]` by default —
+  no `--hint:ExpandMacro:on` needed; that flag's only effect is `:off`,
+  which suppresses the line. SILENCE is the trap: a wrong/nonexistent
+  name or a `template` target prints nothing and exits 0 — same
+  silent-no-op family as `--expandArc` with a wrong target. No
+  `[ExpandMacro]` hint line in the output = wrong target, not "macro
+  expanded to nothing". For template semantics use a minimal runtime
+  probe (`nim c -r`).
+  (Corrected resubmission of the rejected "silent by default" entry; all
+  claims verified in the round-2 audit, runs A1-A5.)
 
 [idiom] `block` is a Nim keyword — illegal as a parameter name (Nim 2.2.4)
 Trap: naming a proc parameter `block` (e.g. a JSON block) fails to compile.

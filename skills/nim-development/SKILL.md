@@ -316,6 +316,29 @@ Two compiler errors recur constantly and are easy to misread:
   needs `std/os`; `getopt` is in `std/parseopt`; `split` is in
   `std/strutils`).
 
+## Choosing diagnostic evidence
+
+Pick the instrument by symptom class, not by habit. Rows below verified on
+Nim 2.2.4 — full evidence in the `[build]`/`[footgun]` entries of
+`nim4friends.txt`; re-verify flags on other versions.
+
+| Symptom | First evidence |
+|---|---|
+| Unhandled exception, default build | Default stack trace — full chain, paths + line numbers |
+| Crash in `-d:release`/`-d:danger` | Trace shows only the raising frame — re-run the *failing* command with `--stackTrace:on --lineTrace:on` (both; `--lineTrace:on` alone restores nothing) |
+| Unexpected copy/move/destroy under ORC/ARC | `nim c --expandArc:<proc> file.nim` — must name a proc; no `--expandArc: <name>` header block in the output means wrong target, **not** "no hooks injected" |
+| "What does this macro expand to?" | `nim c --expandMacro:<name> file.nim` — prints `Hint: expanded macro: ... [ExpandMacro]` by default; no hint line = wrong name or `template` target (templates need a runtime probe) |
+| Wrong runtime value | `echo` / `repr` at invariant boundaries, labeled with the invariant being checked |
+| Evidence missing before a crash | Only hard crashes (segfault, exit 139) lose buffered `stdout.write` — `echo` auto-flushes and unhandled exceptions flush; add `stdout.flushFile()` before ptr/FFI/danger-mode code |
+| `ptr`/FFI memory fault | ASan — recipe in the `[build]` entries; `-d:useMalloc` is load-bearing (without it the same bug exits 0) |
+
+- `debugEcho` works inside `{.noSideEffect.}` code where `echo` is rejected.
+- `compiles(expr)` answers yes/no only — if it returns `false`, compile the
+  candidate normally to get the actual diagnostic.
+- Change one diagnostic dimension at a time (input, build mode, or code —
+  never two at once); a debug build that stops failing is a comparison
+  point, not a fix.
+
 ## Decision checklist
 
 - [ ] Read `nim4friends_rules.md` in full (mandatory); accessed
@@ -327,6 +350,8 @@ Two compiler errors recur constantly and are easy to misread:
 - [ ] Picked the right concurrency model (I/O vs CPU)?
 - [ ] Selected build flags for this context (release keeps checks)?
 - [ ] Handlers use `except CatchableError`?
+- [ ] When debugging: picked the first evidence by symptom class (§ Choosing
+      diagnostic evidence), one diagnostic dimension at a time?
 - [ ] Ran `nimpretty` (format) and `nim check --styleCheck:error`?
 - [ ] **Recorded any newly-learned trap** in `references/trap-inbox.txt` and committed/pushed it? (mandatory if you hit an error, a silent-wrong result, or a version-specific behavior — see [Recording lessons](#recording-lessons-mandatory))
 

@@ -14,6 +14,51 @@
   untrusted network data, a logged IndexDefect beats a silent segfault.
   Only `-d:danger` or `--checks:off` strip the checks.
 
+[build] Release/danger traces show only the raising frame; restore with BOTH --stackTrace:on --lineTrace:on (Nim 2.2.4)
+  In `-d:release`/`-d:danger` builds an unhandled exception prints only the
+  raising frame (`trace.nim(2)             c`), not the call chain — a
+  default build prints the full chain with paths. `--lineTrace:on` alone
+  restores NOTHING (it does not imply `--stackTrace:on`); `--stackTrace:on`
+  alone restores frames without line numbers; both together restore
+  frames + line numbers (one-line procs may still lack line numbers).
+  Re-run the failing command with:
+    nim c -r -d:danger --stackTrace:on --lineTrace:on file.nim
+  Complements the `-d:release keeps runtime checks` entry: release strips
+  trace context too, not just checks.
+
+[build] `--expandArc:<wrong-name>` is a silent no-op — check for the header block (Nim 2.2.4)
+  `nim c --expandArc:makeCopy file.nim` prints an expansion block showing
+  injected hooks (e.g. `result = src` becomes `` `=copy`(result, src) ``):
+    --expandArc: makeCopy
+    `=copy`(result, src)
+    add(result, "extra")
+  Pointing it at a top-level `let`, a plain variable, or a nonexistent proc
+  prints NOTHING and raises no error — compile succeeds normally, so "no
+  output" does NOT mean "no hooks injected". Target must be a named proc;
+  always verify the `--expandArc: <name>` header appeared in the output.
+
+[footgun] Buffered stdout is lost on hard crashes only; unhandled exceptions flush (Nim 2.2.4)
+  `stdout.write("evidence")` before a raw segfault (danger build, exit 139)
+  never appears — buffered output dies with the process. But an unhandled
+  catchable exception DOES flush stdout on the way out (evidence printed,
+  exit 1), so no flush is needed on the exception path. `echo` auto-flushes;
+  after `stdout.write`, add `stdout.flushFile()` before any code that can
+  hard-crash (raw ptr derefs, FFI, danger builds).
+
+[build] ASan on Nim code needs -d:useMalloc; without it the same bug escapes clean (Nim 2.2.4, gcc)
+  Recipe for ptr/FFI memory faults (sanitizer flags on BOTH --passC and
+  --passL):
+    nim c --passC:"-fsanitize=address -fno-omit-frame-pointer" \
+      --passL:"-fsanitize=address -fno-omit-frame-pointer" \
+      -g -d:useMalloc -d:noSignalHandler file.nim
+  Verified: an 8-byte `alloc` read 92 bytes past the end reports
+  `heap-buffer-overflow` with symbolized Nim locations (`asan.nim:4`) and
+  an allocation stack through `lib/system/mm/malloc.nim`. Counterfactual:
+  the SAME bug without `-d:useMalloc` prints a garbage value and exits 0 —
+  the default allocator pools memory, so the read lands inside a valid
+  malloc region and ASan sees nothing. `-g` supplies the Nim file:line
+  symbols.
+
 [build] `--cpu:i386` on Linux doesn't pass `-m32` to gcc
   Nim's `config/nim.cfg` has handling for Windows i386 targets (it
   switches to `i686-w64-mingw32-gcc`), but NO handling for Linux i386.
@@ -478,6 +523,16 @@
   only `system`; `split`/`parseInt` live in `std/strutils`. Same trap class
   as the commandLineParams/std/os entry — fix is to add the import:
     import std/strutils
+
+[footgun] `sqrt` needs `import std/math`; not auto-imported (Nim 2.2.4)
+  Extends the `split needs std/strutils` entry (same mechanism). In a
+  unittest file importing only `std/unittest`, calling sqrt() fails:
+    Error: undeclared identifier: 'sqrt'
+    candidates (edit distance, scope distance); see '--spellSuggest':
+     (2, 3): 'set'
+     (2, 3): 'shr'
+  Fix: `import std/[unittest, math]`. min/max/clamp ARE in system; the
+  math-routine family (sqrt, ln, exp, pow, sin...) is not.
 
 [times] `parse` rejects impossible dates with catchable `TimeParseError`; `dateTime` crashes with `AssertionDefect` (Nim 2.2.4)
   `parse("2025/02/29", "yyyy/MM/dd")` raises "Failed to parse '2025/02/29'
