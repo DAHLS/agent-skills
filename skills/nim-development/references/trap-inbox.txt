@@ -53,3 +53,16 @@ proc merge(block: JsonNode) = discard # Error: expected closing ')'
   Symptom: `Error: Incorrect .nimble file: ... does not contain a license field.`
   Fix: run the test binaries directly (`nim c -r tests/tfoo.nim`) or set a
   license string; the task's exec lines are otherwise fine.
+
+[float] extends the [float] bitwise-== entry: a decimal literal pin of a
+  float product is one rounding off (Nim 2.x)
+  Trap: pinning `check x == 46.8` where x is computed as `0.78 * 60.0`.
+  0.78 has no exact binary form, and the correctly-rounded product
+  0.78 * 60.0 == 46.800000000000004 != 46.8 (the nearest double to the
+  decimal). Meanwhile 0.78 * 90.0 == 70.2 exactly — the literal pin
+  passes or fails per-constant by accident of the roundings.
+  Symptom: unittest `Check failed: x == 46.8` with the diff in the 12th
+  digit, only for some constants in the same suite.
+  Fix: pin the product expression itself (`check x == 0.78 * 60.0`) so
+  both sides take the same rounding, or probe the exact repr before
+  freezing a literal pin. Verified by /tmp probe 2026-09-15.
