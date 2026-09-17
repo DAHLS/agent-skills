@@ -98,3 +98,18 @@ resolves them as separate params. Fix: parenthesize the whole macro call —
      "max_core_c": r.maxCoreC})
 Single-line `x.add %*{"a": 1}` is fine; it bites when the table is broken
 across lines.
+
+[footgun] Positional args silently bind to DEFAULTED params — no warning, wrong physics (Nim 2.2.4)
+CANDIDATE (extends the general overload-mismatch entry; promote beside it if verified)
+Trap: calling a proc that has default parameters (`proc advance*(st, params, deliveredW, dt,
+glycogenScale = 1.0, vApp = 12.0, tempC = 20.0, rh = 0.5)`) with extra POSITIONAL
+arguments binds them left-to-right into the defaults' slots — passing
+`advance(st, p, 304.0, 1.0, 1.0, 8.2, 0.30)` sets vApp = 8.2, tempC = 0.30, not the
+intended tempC = 8.2, rh = 0.30.
+Symptom: no compile error, no hint; the call runs with silently different operating
+context. Observed 2026-09-17: unit tests computed targets at ambient 0.3 °C and PASSED
+by coincidence against a wrong operating point until an unrelated grid check exposed
+negative E_req where positive was asserted.
+Fix: after any defaulted param, use NAMED arguments for the rest of the call:
+`advance(st, p, 304.0, 1.0, vApp = 12.79, tempC = 8.2, rh = 0.30)` — or always name
+optional-position args in tests that pin numeric operating points.
