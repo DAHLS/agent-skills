@@ -66,3 +66,23 @@ proc merge(block: JsonNode) = discard # Error: expected closing ')'
   Fix: pin the product expression itself (`check x == 0.78 * 60.0`) so
   both sides take the same rounding, or probe the exact repr before
   freezing a literal pin. Verified by /tmp probe 2026-09-15.
+
+[init] `var x: T` zero-fills — object field default values apply ONLY in T() constructions
+trap: declaring `var st: MyObj` where MyObj has `field*: float = 36.8` gives 0.0,
+  not 36.8. Field defaults are construction-time (T(), result of procs returning T),
+  never declaration-time.
+symptom: assertion like `var st: PhysiologyState; st.coreC == 36.8` fails with 0.0.
+fix: use `var st = MyObj()` (or the constructing proc) when defaults are meant:
+  var st = PhysiologyState()   # 36.8
+  var st2: PhysiologyState     # 0.0 — zero-init, defaults ignored
+(Nim 2.2.4, verified by minimal probe.)
+
+[ambiguity] identifiers differing only in case after the first char are the SAME symbol
+trap: `let dt = ...` followed by `let dT = ...` in the same scope — Nim's
+  style-insensitive ident matching (first char case-sensitive, rest ignored) makes
+  them one symbol.
+symptom: "Error: redefinition of 'dT'; previous declaration is here" even though
+  the spellings differ.
+fix: rename one (e.g. `dT` -> `dTemp`); no compiler flag disables this —
+  --styleChecks only governs style warnings, not symbol identity.
+(Nim 2.2.4.)
