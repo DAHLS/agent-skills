@@ -86,3 +86,15 @@ symptom: "Error: redefinition of 'dT'; previous declaration is here" even though
 fix: rename one (e.g. `dT` -> `dTemp`); no compiler flag disables this —
   --styleChecks only governs style warnings, not symbol identity.
 (Nim 2.2.4.)
+
+[json] `%*` as a bare call argument parses the trailing `{...}` as an extra macro argument (Nim 2.2.4)
+`seq.add %* {...}` — a multi-line table constructor after the `%*` macro,
+without parentheses — fails to compile with a confusing overload error:
+  Error: type mismatch ... [2] macro `%*`(x: untyped): untyped
+    extra argument given
+The parser splits `%*` and `{...}` into two arguments of `add`/the macro
+resolves them as separate params. Fix: parenthesize the whole macro call —
+  riders.add(%*{"rider": i + 1, "steps": r.steps,
+     "max_core_c": r.maxCoreC})
+Single-line `x.add %*{"a": 1}` is fine; it bites when the table is broken
+across lines.
