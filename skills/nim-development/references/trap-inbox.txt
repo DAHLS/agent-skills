@@ -113,3 +113,22 @@ negative E_req where positive was asserted.
 Fix: after any defaulted param, use NAMED arguments for the rest of the call:
 `advance(st, p, 304.0, 1.0, vApp = 12.79, tempC = 8.2, rh = 0.30)` — or always name
 optional-position args in tests that pin numeric operating points.
+
+[footgun] A standalone `##` doc-comment line at field indentation inside an object definition breaks the parser (Nim 2.2.4)
+[footgun] `##` doc-comment line at field level inside `type` object def = "identifier expected"
+Trap: inside a `type` object definition, a run of plain `#` comment lines at
+field indentation followed by a `## ...` doc-comment line (still at field
+indent, meant as a continuation of the inter-field comment) makes the parser
+treat the `##` line as documentation for the NEXT field mid-context and fail.
+Symptom: `Error: identifier expected, but got '<first word of the doc line>'`
+plus cascading "invalid indentation" / "expression expected, but found ':'".
+Fix: use only `#` lines for inter-field commentary inside object definitions
+(reserve `##` for trailing comments on the field's own line or the block
+directly above a field).
+```nim
+type T = object
+  a*: int ## fine: trailing doc on the field
+  # interlude commentary
+  # must stay plain # — a `## is ...` line here fails to parse
+  b*: int
+```
