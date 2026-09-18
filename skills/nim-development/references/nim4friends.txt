@@ -360,19 +360,14 @@
   comparing, or construct both sides the same way (e.g. both via
   `DataDir / ...`).
 
-[footgun] `existsOrCreateDir` returns bool; `discard` it if you don't care
+[os] `existsOrCreateDir`: returns bool (discard it if idempotent), and does NOT create parents — use `createDir` for nested paths
   `existsOrCreateDir(path)` returns `true` if it created the dir,
-  `false` if it already existed. If you just need the dir to exist
-  (idempotent), `discard existsOrCreateDir(path)`. It's safe to call
-  repeatedly — no error if the dir already exists.
-
-[os] `existsOrCreateDir` doesn't create parents; use `createDir` for nested paths
-  `existsOrCreateDir("a/b/c")` raises `OSError` for nested paths — it
-  only creates the final directory, not parents. For nested output
-  paths (e.g. `--outdir a/b/c`), use `createDir` instead: it's
-  recursive and idempotent (no error if the dir already exists, creates
-  all intermediate dirs). The two procs look interchangeable for the
-  single-dir case but diverge silently on nested paths.
+  `false` if it already existed — `discard` it if you just need the
+  dir to exist (safe to call repeatedly). For NESTED paths it raises
+  `OSError`: it only creates the final directory, not parents. Use
+  `createDir` instead (e.g. `--outdir a/b/c`): it's recursive and
+  idempotent. The two procs look interchangeable for the single-dir
+  case but diverge silently on nested paths.
 
 [footgun] Float literal default type is `float64`
   `NaN` is `float64` by default. For `float32` tensors/fields, use
@@ -753,12 +748,10 @@
   `waitFor asyncProc()` from `std/asyncdispatch`. (`runForever` exists but blocks
   indefinitely; `waitFor` runs the event loop until the given Future completes.)
 
-[footgun] `rand` module renamed to `random` in Nim 2.x
-  `import rand` fails: "cannot open file: rand". Fix: `import random`.
-  The module lives at `lib/pure/random.nim`.
-
-[footgun] `srand` renamed to `randomize` in Nim 2.x
-  `srand(seed)` fails: "undeclared identifier: 'srand'". Fix:
+[footgun] random module renames: `import rand` -> `import random`, `srand` -> `randomize` (Nim 2.x)
+  `import rand` fails: "cannot open file: rand" — the module is
+  `random` (lives at `lib/pure/random.nim`). And `srand(seed)` fails:
+  "undeclared identifier: 'srand'" — the seeding proc is
   `randomize(seed)` where seed is `int64`.
 
 [cli] `getopt`/`parseopt` cannot capture `--opt value` (space form) — consume the trailing `cmdArgument` yourself (Nim 2.2.4)
