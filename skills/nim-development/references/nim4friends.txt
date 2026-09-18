@@ -1134,3 +1134,80 @@
   Fix: pin the identity with an explicit early-return branch (return
   early when the identity factor is exactly 1.0) or compare with a
   tolerance — never bitwise equality across an arithmetic detour.
+
+[build] `--expandMacro` prints its hint by default; silence means wrong name or template target (Nim 2.2.4)
+  `nim c --expandMacro:myMacro file.nim` prints
+  `file.nim(9, 13) Hint: expanded macro: 42 [ExpandMacro]` by default —
+  no `--hint:ExpandMacro:on` needed; that flag's only effect is `:off`,
+  which suppresses the line. SILENCE is the trap: a wrong/nonexistent
+  name or a `template` target prints nothing and exits 0 — same
+  silent-no-op family as the `--expandArc` entry. No `[ExpandMacro]`
+  hint line in the output = wrong target, not "macro expanded to
+  nothing". For template semantics use a minimal runtime probe
+  (`nim c -r`).
+
+[idiom] `block` is a Nim keyword — illegal as a parameter name (Nim 2.2.4)
+  Trap: naming a proc parameter `block` (e.g. a JSON block) fails to
+  compile — misleadingly with a *syntax* error, not a "keyword in use"
+  error. `addr` behaves identically (probed).
+  Symptom: `Error: expected closing ')'` pointing at the parameter line.
+  Fix: rename the parameter (e.g. `jsonBlock`); keywords like `block`,
+  `type`, `addr`, `mixin` cannot be parameter names.
+    proc merge(b: JsonNode) = discard     # fine
+    proc merge(block: JsonNode) = discard # Error: expected closing ')'
+
+[build] `nim c -o bin/name` fails — the output flag needs the colon form (Nim 2.2.4)
+  Trap: passing the output binary as a separate token.
+  Symptom: `Error: argument for command line option expected: '-o'`
+  Fix: `nim c -o:bin/name src/name.nim` (colon-attached value).
+
+[float] A decimal-literal pin of a float product is one rounding off (Nim 2.x)
+  Extends the [float] bitwise-== entry. Trap: pinning `check x == 46.8`
+  where x is computed as `0.78 * 60.0`. 0.78 has no exact binary form,
+  and the correctly-rounded product
+  `0.78 * 60.0 == 46.800000000000004 != 46.8` (the nearest double to
+  the decimal). Meanwhile `0.78 * 90.0 == 70.2` exactly — the literal
+  pin passes or fails per-constant by accident of the roundings.
+  Symptom: unittest `Check failed: x == 46.8` with the diff in the 12th
+  digit, only for some constants in the same suite.
+  Fix: pin the product expression itself (`check x == 0.78 * 60.0`) so
+  both sides take the same rounding, or probe the exact repr before
+  freezing a literal pin.
+
+[ambiguity] Identifiers differing only in case after the first char are the SAME symbol (Nim 2.2.4)
+  Trap: `let dt = ...` followed by `let dT = ...` in the same scope —
+  Nim's style-insensitive ident matching (first char case-sensitive,
+  rest ignored) makes them one symbol.
+  Symptom: `Error: redefinition of 'dT'; previous declaration here:`
+  even though the spellings differ.
+  Fix: rename one (e.g. `dT` -> `dTemp`); no compiler flag disables
+  this — `--styleCheck:error` governs style warnings only, not symbol
+  identity (probed: the redefinition error persists with it on).
+
+[footgun] Positional args silently bind to DEFAULTED params — no warning, wrong values (Nim 2.2.4)
+  Trap: calling a proc that has trailing default parameters
+  (`proc advance(base, w, dt: float; scale = 1.0, rate = 12.0,
+  tempC = 20.0, rh = 0.5)`) with extra POSITIONAL arguments binds them
+  left-to-right into the defaults' slots — `advance(b, w, dt, 1.0, 8.2,
+  0.30)` sets rate = 8.2, tempC = 0.30, not the intended tempC = 8.2,
+  rh = 0.30.
+  Symptom: no compile error, no warning; the call runs with a silently
+  different operating context. Observed 2026-09-17: unit tests computed
+  targets at ambient 0.3 °C and PASSED by coincidence until an
+  unrelated check exposed the shift.
+  Fix: after any defaulted param, use NAMED arguments for the rest of
+  the call (`advance(b, w, dt, 1.0, rate = 12.79, tempC = 8.2,
+  rh = 0.30)`) — or always name optional-position args in tests that
+  pin numeric operating points.
+
+[footgun] std/tables `[]` raises an unhandled KeyError on a missing key — guard with `in` first (Nim 2.2.4)
+  Symptom: runtime crash
+  `Error: unhandled exception: key not found: fluid_intake [KeyError]`
+  (exit 1), with a stack trace through tables.nim's raiseKeyError — not
+  at your logic error.
+  Trap: writing `for e in t["name"]` (or any direct `t[k]`) when the key
+  may be absent. Unlike json's `{}` (null-safe), std/tables has no safe
+  accessor except `t.getOrDefault(k)` / `k in t`.
+  Fix:
+    if "name" in t:
+      for e in t["name"]: ...
