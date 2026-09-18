@@ -236,13 +236,29 @@
   `getTime().toTime()` fails: "Expected one of: proc toTime(dt: DateTime): Time".
   Fix: `getTime().toUnix()` without the `.toTime()` call.
 
-[times] Parsing ISO-8601 with 'Z' suffix
-  `parse("2021-07-12T17:33:59.420000Z", "yyyy-MM-dd'T'HH:mm:sszzz")`
-  fails because `zzz` expects `+00:00` format, not `Z`. Rewrite `Z`
-  to `+00:00` before parsing:
-    let t = s.replace("Z", "+00:00")
+[times] Parsing real-world ISO-8601: 'Z' suffix and fractional seconds break `parse`; strip both (Nim 2.2.4)
+  `parse(s, "yyyy-MM-dd'T'HH:mm:sszzz")` fails on two real-world forms:
+  a 'Z' suffix (`zzz` expects `+00:00`, not `Z`) and fractional seconds
+  (Nim's `parse` has no token for them — after `ss` matches, the parser
+  hits `.735000` and raises `TimeParseError`, unlike strptime's `%f`).
+  Symptom is silent data loss when the parse sits inside a
+  `try/except CatchableError: discard`: every record raises, every
+  record is dropped, the count reads zero, nothing surfaces unless the
+  `except` branch logs.
+  Fix: rewrite 'Z' to '+00:00', then strip any fractional part — from
+  '.' up to the timezone sign. Search for BOTH signs: `find('+')` alone
+  misses negative offsets like `-05:00` (strutils' `find` accepts a
+  `set[char]`):
+    var t = s.replace("Z", "+00:00")
+    let dot = t.find('.')
+    if dot >= 0:
+      let tzStart = t.find({'+', '-'}, start = dot)
+      if tzStart >= 0:
+        t = t[0 ..< dot] & t[tzStart .. ^1]
     result = parse(t, "yyyy-MM-dd'T'HH:mm:sszzz", utc()).toTime()
-  Pair with a `formatIsoUtc(t: Time)` helper that does the reverse
+  Timestamps without a '.' are untouched; the search starts after the
+  dot so it never hits the date's own `-` separators. Pair with a
+  `formatIsoUtc(t: Time)` helper doing the reverse
   (`t.utc.format("yyyy-MM-dd'T'HH:mm:ss'Z'")`).
 
 [times] `.utc.format` returns string; `.inHours` returns int64
@@ -250,42 +266,6 @@
   fractional hours, use `.inSeconds.float64 / 3600.0`. `.inHours` on
   a negative duration is negative — useful for "age" calculations
   (future time → negative age).
-
-[times] Fractional seconds in ISO-8601 break `parse` with `sszzz`
-  `parse("2026-07-16T19:36:21.735000+00:00", "yyyy-MM-dd'T'HH:mm:sszzz")`
-  raises `TimeParseError`. After `ss` matches `21`, the parser expects
-  the `zzz` timezone token but hits `.735000` — Nim's `parse` has no
-  format token for fractional seconds (unlike strptime's `%f`). This
-  compounds with the `Z`-suffix trap above: the example timestamp
-  `2021-07-12T17:33:59.420000Z` shown there still fails after the
-  `Z`→`+00:00` rewrite, because the resulting `...59.420000+00:00`
-  chokes on the fractional part. Symptom is silent data loss when the
-  parse is inside a `try/except CatchableError: discard` — every record
-  raises, every record is dropped, the count reads zero, and nothing
-  surfaces unless the `except` branch logs. Fix: strip the fractional
-  substring (from `.` up to but excluding the timezone `+`) before
-  calling `parse`:
-    var t = s.replace("Z", "+00:00")
-    let dot = t.find('.')
-    if dot >= 0:
-      let tzStart = t.find('+', start = dot)
-      if tzStart >= 0:
-        t = t[0 ..< dot] & t[tzStart .. ^1]
-    result = parse(t, "yyyy-MM-dd'T'HH:mm:sszzz", utc()).toTime()
-  Timestamps without a `.` are untouched (the `Z`-only and `+00:00`-only
-  forms still parse). The second `find` starts searching after the dot so
-  it locates the timezone `+`, not a stray `+` earlier in the string
-  (there isn't one in practice, but the pattern is robust).
-
-[times] Fractional-second strip misses `-` timezone offsets
-  The fractional-seconds fix above searches only for `+` after the dot:
-    let tzStart = t.find('+', start = dot)
-  ISO-8601 numeric offsets can be negative (`...21.735000-05:00`); there
-  `find('+')` returns -1, the fractional part survives, and `parse` with
-  `sszzz` raises `TimeParseError`. (The date's own `-` separators are
-  never seen because the search starts after the dot.) Fix: search for
-  both signs — `strutils.find` accepts a `set[char]`:
-    let tzStart = t.find({'+', '-'}, start = dot)
 
 [json] `{}` is null-safe, `[]` is strict
   `node{"key"}` returns `nil` if the key is missing (safe for optional
@@ -362,13 +342,6 @@
   modifying, format a temp copy and `diff` it against the original
   (non-empty diff ⇒ not canonical); or run `nimpretty src/*.nim` and
   review the diff.
-
-[footgun] `parseopt` doesn't handle `--flag value` (space-separated) cleanly
-  Nim's `parseopt` handles `--flag=value` but the value in
-  `--flag value` ends up as a positional argument in the next
-  iteration. For CLIs accepting both forms, write a manual parser:
-  check if a flag needs a value, consume the next arg if no `=` was
-  present.
 
 [footgun] `discard` required for non-void returns
   Nim requires explicit `discard` of non-void return values you don't
@@ -615,7 +588,8 @@
   the receiver rehydrates with `parseJson(s)` on its own heap — and
   for fan-out reads use `spawn`/`FlowVar` (std/threadpool) to return
   the string, which transfers correctly under concurrency (threadpool
-  is deprecated in 2.x; malebolgia is the maintained swap).
+  is deprecated in 2.x — see the `[build]` entry; malebolgia is the
+  maintained swap).
 
 [threads] createThread corrupts a thread-arg tuple that contains an int field (Nim 2.2.4)
   A worker `proc(args: tuple[ptr X; idx: int; path: string]) {.thread.}`
@@ -625,8 +599,8 @@
   show correct values, then later lines show zeroed fields). Verified by
   minimal repro. Workaround: keep the thread-arg tuple to shapes that
   marshal cleanly, e.g. `(ptr X; path: string; base: string)`
-  (ptr + strings only); if you need an index, pass a `ptr Slot` to
-  the worker's OWN slot instead of an int field.
+  (ptr + strings only); if you need an index, pass a `ptr` to the
+  worker's own output record instead of an int field.
 
 [sdl2] bare `quit()` is ambiguous with `system.quit` (Nim 2.2.4, sdl2 2.0.5)
   After `import sdl2`, a bare zero-arg `quit()` fails to compile:
@@ -787,22 +761,20 @@
   `srand(seed)` fails: "undeclared identifier: 'srand'". Fix:
   `randomize(seed)` where seed is `int64`.
 
-[cli] `getopt` cannot capture a separate-token option value (Nim 2.2.4)
-  `for k,key,val in initOptParser().getopt():` yields `--field` with
-  `val=""` for `--field value` (the `value` arrives as a following
-  `cmdArgument`, not `val`). The standalone `getopt(cmdline,
+[cli] `getopt`/`parseopt` cannot capture `--opt value` (space form) — consume the trailing `cmdArgument` yourself (Nim 2.2.4)
+  `for k,key,val in initOptParser().getopt():` yields `--opt` with
+  `val=""` for `--opt value` — the value arrives as a following
+  `cmdArgument` event, not as `val` (`parseopt` handles `--opt=value`;
+  the space-separated form never binds). The standalone `getopt(cmdline,
   shortNoVal=..., longNoVal=...)` iterator exists but does NOT accept
-  `shortWithVal`/`longWithVal` ("unknown named parameter: shortWithVal").
-  Fix: parse `commandLineParams()` manually, or require `--field=value`.
-
-[cli] parse `--opt value` (space form) by consuming the following `cmdArgument` (Nim 2.2.4)
-  Extends the `[cli] getopt cannot capture a separate-token option value`
-  entry. `for k,key,val in getopt():` yields `--opt` with `val=""`
-  and the value as the NEXT event as a `cmdArgument`. Instead of manual
-  parsing, track a `pending` option name: when a value-expecting option has
-  `val==""`, set `pending="opt"`; on the next `cmdArgument` assign `val=key`
-  and clear `pending`. After the loop, if `pending!=""` error "requires a
-  value". This gives `--output=x`, `--output x`, `-o x`, `-o=x` all working.
+  `shortWithVal`/`longWithVal` ("unknown named parameter:
+  shortWithVal").
+  Fix: instead of a fully manual parser, track a `pending` option
+  name: when a value-expecting option has `val==""`, set
+  `pending="opt"`; on the next `cmdArgument` assign `val=key` and
+  clear `pending`; after the loop `pending!=""` means "requires a
+  value". This gives `--output=x`, `--output x`, `-o x`, `-o=x` all
+  working.
 
 [footgun] `parseInt` on a string needs `std/strutils`; not auto-imported (Nim 2.2.4)
   `node.getStr.parseInt` fails: "undeclared field: 'parseInt' for type
@@ -861,8 +833,8 @@
   allFutures` entry.
 
 [cli] `getopt` value-expecting option eats the next token even if it's a flag (Nim 2.2.4)
-  Extends the `[cli] parse --opt value by consuming the following cmdArgument`
-  entry. With `getopt(argv, shortNoVal={'v'}, longNoVal=@["verbose"])`,
+  Extends the `[cli] getopt/parseopt cannot capture --opt value` entry.
+  With `getopt(argv, shortNoVal={'v'}, longNoVal=@["verbose"])`,
   `--output --verbose foo.txt` yields `--output` with `val="--verbose"` —
   i.e. getopt attaches the NEXT token verbatim as the value, WITHOUT checking
   whether that token is itself a registered `longNoVal` flag. Symptom: `--verbose`
@@ -1040,34 +1012,20 @@
     let j = if cond: %(x) else: newJNull()
     %*{"k": j}
 
-[init] `var x: T` zero-fills every field — unset floats read as real data in diff-all-fields test assertions (Nim 2.2.4)
-  Trap: `var p: Params` gives 0.0 for all float fields (0 for
-  ints/enums). A test that sets only the field under test, then diffs
-  ALL fields against nonzero baselines, reports every untouched field
-  as a deviation.
-  Symptom: check failure listing e.g. `p.threshold was 0.0` against a
-  61.0 baseline, for fields the test never set.
-  Fix: construct from a baseline and override the one field:
-    proc baseline(): Params = Params(threshold: 61.0, step: 10.0)
-    var p = baseline()
-    p.rate = 0.0035
-  (extends the [init] `= T()` field-defaults entry: zero-init is also
-  why those defaults never run on the `var`/`result` path)
-
-[init] Field default `= T()` runs for `T()` constructors only, NOT for `var x: T` / implicit `result` zero-init (Nim 2.2.4)
-  Probe:
-    type RW = object
-      defaultM*: float = 6.0
-    type Sc = object
-      rw*: RW = RW()
+[init] `var x: T` zero-fills; field defaults run ONLY in `T()` constructions, never on `var`/implicit `result` (Nim 2.2.4)
+  Trap: `var st: MyObj` where MyObj has `field: float = 36.8` gives
+  0.0, not 36.8 — and nested defaults are skipped too:
     var s: Sc
     echo s.rw.defaultM     # 0.0  <-- nested default skipped
     echo Sc().rw.defaultM  # 6.0
   A proc returning via implicit `result` reads the same 0.0 — silently
-  wrong values, no warning. Fix: assign such fields explicitly
-  (`result.rw = RW()`). Inner scalar defaults (the 6.0) DO apply when
-  the owning object itself is constructed via `T()`; trust field
-  defaults only on the `T()` path, never on `var`/`result`.
+  wrong values, no warning.
+  Symptom: a diff-all-fields test that sets only the field under test
+  then diffs against nonzero baselines reports every untouched field
+  as a deviation (`p.threshold was 0.0` against a 61.0 baseline).
+  Fix: construct via `T()` (or a baseline proc) and override one field;
+  on the `result` path assign defaulted fields explicitly
+  (`result.rw = RW()`). Trust field defaults only on the `T()` path.
 
 [footgun] unittest `fail()`/`check` inside a helper PROC stamps [OK] but exits 1 (Nim 2.2.4)
   Trap: `test` injects `testStatusIMPL` into the test body's lexical
@@ -1115,8 +1073,7 @@
     let num = (fHi - fLo) / (2.0 * h)   # not: let num = (fA(...)
                                        #        - fB(...)) / ...
 
-[float] Bitwise `==` on a float round-trip is a constant-coincidence,
-  not an identity (Nim 2.2.4)
+[float] Bitwise `==` on a float round-trip is a constant-coincidence, not an identity (Nim 2.2.4)
   Trap: a unittest pinned `check 1.0 - (1.0 - x) * 1.0 == x` (bitwise
   ==, no epsilon) over interpolated float64 values. The double
   rounding (`1.0 - x` rounds, then `1.0 - rounded` rounds again) does
