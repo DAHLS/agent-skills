@@ -249,7 +249,7 @@
   `(t1 - t2).inHours` returns `int64` (whole hours, truncated). For
   fractional hours, use `.inSeconds.float64 / 3600.0`. `.inHours` on
   a negative duration is negative — useful for "age" calculations
-  (future time → negative age → clamp to 100% opacity).
+  (future time → negative age).
 
 [times] Fractional seconds in ISO-8601 break `parse` with `sszzz`
   `parse("2026-07-16T19:36:21.735000+00:00", "yyyy-MM-dd'T'HH:mm:sszzz")`
@@ -299,8 +299,8 @@
   `node.getFloat()` extracts a float from a `JFloat` or `JInt` node.
   `node.getStr()` extracts a string. These return zero/"" on type
   mismatch (no raise) — so check `n.kind` first if the field is
-  critical. For numbers stored as strings in the API (e.g. DMI's
-  lightning "direction" field), parse with `parseFloat(n.getStr())`.
+  critical. For numbers an API reports as strings (e.g. a
+  "direction" field), parse with `parseFloat(n.getStr())`.
 
 [json] Checking `v.kind != JFloat` silently drops integer-valued fields
   A guard like `if v.kind != JFloat: continue` rejects `JInt`. An API
@@ -315,7 +315,7 @@
   `newJArray()` + `arr.add(elem)` for arrays.
   `writeFile(path, $root)` serializes compactly. For cache files, keep
   the layout simple (arrays of primitives) so `loadCache` can iterate
-  with `for row in data["strikes"]:` and index `row[0].getStr()` etc.
+  with `for row in data["rows"]:` and index `row[0].getStr()` etc.
 
 [idiom] Export hygiene — drop `*` from internal-only procs
   `*` on a proc/type/const marks it as exported (public API). Before
@@ -600,12 +600,22 @@
   BOTH via a `ptr slot` written by the worker AND via
   `Channel[JsonNode]` with `--deepcopy:on` — the deep copy is allocated
   on the *sender's* heap, so recv still hands the main thread refs into
-  a dead thread's region. Plain `string` messages over `Channel[T]`
-  (including strings inside an object) are copied safely and work.
+  a dead thread's region.
+  CORRECTION (Nim 2.2.4): plain `string` messages over `Channel[T]`
+  (including strings inside an object) are copied safely and work —
+  but only for a SINGLE sender. With >1 concurrent sender ("one
+  worker per file" fan-out), BOTH `Channel[string]` and
+  `Channel[plainObjectWithString]` SIGSEGV on the 2nd concurrent
+  `send` ("read from nil" in `sendImpl`; the deep copy into the
+  channel's shared ring buffer is unsafe under concurrency).
+  Verified: 1 sender ok, 3 concurrent senders crash; original repro
+  24 threads x 10 rounds — JsonNode channel segfaults, string channel
+  passes.
   Fix: workers serialize (`$node`) and send the compact JSON string;
-  the receiver rehydrates with `parseJson(s)` on its own heap.
-  Verified by minimal repro: 24 threads x 10 rounds — JsonNode channel
-  segfaults, string channel passes.
+  the receiver rehydrates with `parseJson(s)` on its own heap — and
+  for fan-out reads use `spawn`/`FlowVar` (std/threadpool) to return
+  the string, which transfers correctly under concurrency (threadpool
+  is deprecated in 2.x; malebolgia is the maintained swap).
 
 [threads] createThread corrupts a thread-arg tuple that contains an int field (Nim 2.2.4)
   A worker `proc(args: tuple[ptr X; idx: int; path: string]) {.thread.}`
@@ -617,17 +627,6 @@
   marshal cleanly, e.g. `(ptr X; path: string; base: string)`
   (ptr + strings only); if you need an index, pass a `ptr Slot` to
   the worker's OWN slot instead of an int field.
-
-  CORRECTION (Nim 2.2.4): the "plain string channel works"
-  workaround only holds for a SINGLE sender. With >1 concurrent
-  sender (the exact "one worker thread per file" fan-out), BOTH
-  `Channel[string]` and `Channel[plainObjectWithString]` SIGSEGV on the
-  2nd concurrent `send` ("read from nil" in `sendImpl`, the deep-copy
-  into the channel's shared ring buffer is unsafe under concurrency).
-  Verified: 1 sender ok; 3 concurrent senders crash. So for fan-out
-  reads use `spawn`/`FlowVar` (std/threadpool) to return the string —
-  that transfers correctly under concurrency. (std/threadpool is itself
-  deprecated in 2.x; malebolgia is the maintained swap.)
 
 [sdl2] bare `quit()` is ambiguous with `system.quit` (Nim 2.2.4, sdl2 2.0.5)
   After `import sdl2`, a bare zero-arg `quit()` fails to compile:
@@ -1041,8 +1040,7 @@
     let j = if cond: %(x) else: newJNull()
     %*{"k": j}
 
-[init] `var x: T` zero-fills every field — unset floats read as real data
-  in diff-all-fields test assertions (Nim 2.2.4)
+[init] `var x: T` zero-fills every field — unset floats read as real data in diff-all-fields test assertions (Nim 2.2.4)
   Trap: `var p: Params` gives 0.0 for all float fields (0 for
   ints/enums). A test that sets only the field under test, then diffs
   ALL fields against nonzero baselines, reports every untouched field
@@ -1056,8 +1054,7 @@
   (extends the [init] `= T()` field-defaults entry: zero-init is also
   why those defaults never run on the `var`/`result` path)
 
-[init] Field default `= T()` runs for `T()` constructors only, NOT for
-  `var x: T` / implicit `result` zero-init (Nim 2.2.4)
+[init] Field default `= T()` runs for `T()` constructors only, NOT for `var x: T` / implicit `result` zero-init (Nim 2.2.4)
   Probe:
     type RW = object
       defaultM*: float = 6.0
@@ -1072,8 +1069,7 @@
   the owning object itself is constructed via `T()`; trust field
   defaults only on the `T()` path, never on `var`/`result`.
 
-[footgun] unittest `fail()`/`check` inside a helper PROC stamps [OK] but
-  exits 1 (Nim 2.2.4)
+[footgun] unittest `fail()`/`check` inside a helper PROC stamps [OK] but exits 1 (Nim 2.2.4)
   Trap: `test` injects `testStatusIMPL` into the test body's lexical
   scope; `fail()` guards with `when declared(testStatusIMPL)` and else
   just calls `setProgramResult 1` (unittest.nim). A check/fail inside a
@@ -1086,8 +1082,7 @@
   failure marks [FAILED]) or `raise` on the unexpected-accept path;
   never rely on `fail()` from a proc.
 
-[idiom] Export `*` is illegal on named-tuple FIELDS — star the type only
-  (Nim 2.2.4)
+[idiom] Export `*` is illegal on named-tuple FIELDS — star the type only (Nim 2.2.4)
   `type Sample* = tuple[name*: string, order*: seq[int]]` fails:
     Error: ':' or '=' expected, but got '*'
   pointing at the first starred field. Tuple fields have no visibility

@@ -98,3 +98,6 @@ Move a candidate from `trap-inbox.txt` into the canon `nim4friends.txt`:
 | `[sdl3]` | SDL3 bindings for Nim |
 | `[sdl2]` | SDL2 bindings for Nim (sdl2 nimble wrapper) |
 | `[threads]` | std/threads, std/threadpool, concurrency, GC across threads |
+| `[parsecsv]` | std/parsecsv module |
+| `[sequtils]` | std/sequtils module |
+| `[modules]` | import/module dependency issues |
