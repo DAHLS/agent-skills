@@ -132,3 +132,11 @@ type T = object
   # must stay plain # — a `## is ...` line here fails to parse
   b*: int
 ```
+
+[footgun] std/tables `[]` raises an unhandled KeyError on a missing key — guard with `in` first (Nim 2.2.4)
+  Symptom: runtime crash "Error: unhandled exception: key not found: fluid_intake [KeyError]" (exit 1), with a stack trace pointing at tables.nim's raiseKeyError — not at your logic error.
+  Trap: writing `for e in doc.arrays["name"]` (or any direct `t[k]`) when the key may be absent. Unlike json's `{}` (null-safe), std/tables has no safe accessor except `t.getOrDefault(k)` / `k in t`.
+  Fix:
+    if "name" in doc.arrays:
+      for e in doc.arrays["name"]: ...
+  (Hit while conditionally parsing optional TOML array-of-tables blocks; the crash only fired on the files that declared ONE of two optional blocks.)
