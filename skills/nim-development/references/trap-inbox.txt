@@ -17,3 +17,20 @@ inline indented snippets — no fenced code blocks, no label scaffolding),
 so promotion is a verify-then-move, not a rewrite.
 
 ---
+
+[build] `--styleChecks:error` is invalid — the value-taking flag is singular `--styleCheck` (Nim 2.2.4)
+  Trap: the plural `--styleChecks` only accepts on/off. Passing
+  `--styleChecks:error` fails before any file is read:
+  `command line(1, 2) Error: 'on' or 'off' expected, but 'error' found`
+  Fix: `--styleCheck:error` (singular; takes :error/:hint/:usages).
+  `--styleChecks:on|off` is the legacy boolean form. (Hit while
+  re-running a compile with the checker flag; cost a compile cycle.)
+
+[nimble] a `.nimble` file named `pkg.nimble` is rejected — and the error prints a raw `$1` placeholder (nimble 0.18.2)
+  Trap: the .nimble filename IS the package name, and nimble rejects
+  package names ending with "pkg". Every nimble command in the project
+  fails with:
+  `Error: "$1" is an invalid package name: cannot end with "pkg"`
+  — the unformatted `$1` placeholder looks like a nimble bug and hides
+  which name offended. Fix: rename the file to the real package name
+  (e.g. `mypkg.nimble`).
