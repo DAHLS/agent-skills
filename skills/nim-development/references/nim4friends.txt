@@ -1202,7 +1202,7 @@
 
 [footgun] std/tables `[]` raises an unhandled KeyError on a missing key — guard with `in` first (Nim 2.2.4)
   Symptom: runtime crash
-  `Error: unhandled exception: key not found: fluid_intake [KeyError]`
+  `Error: unhandled exception: key not found: name [KeyError]`
   (exit 1), with a stack trace through tables.nim's raiseKeyError — not
   at your logic error.
   Trap: writing `for e in t["name"]` (or any direct `t[k]`) when the key
