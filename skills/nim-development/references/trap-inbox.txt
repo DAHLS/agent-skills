@@ -34,3 +34,17 @@ so promotion is a verify-then-move, not a rewrite.
   — the unformatted `$1` placeholder looks like a nimble bug and hides
   which name offended. Fix: rename the file to the real package name
   (e.g. `mypkg.nimble`).
+
+- id: candidate-sha256-round-rotation-2026-09-20
+  apis: [manual uint32 round loop, rotr]
+  error: hand-written SHA-256 produced consistently wrong digests (e.g.
+    sha256Hex("abc") = "2c767a4b..." instead of "ba7816bf..."), no compile
+    error — silently wrong.
+  lesson: in the working-var rotation `hh = f; f = e; ...` one shift is
+    missing — new h must receive OLD g: `hh = g; g = f; f = e; e = d + t1;
+    d = c; c = b; b = a; a = t1 + t2`. Debug by porting the suspect loop
+    verbatim to Python and diffing against hashlib — a matching wrong
+    answer proves the transcription, isolating the algorithm bug. Also:
+    unsuffixed hex literals > 0x7FFFFFFF infer int64 (type mismatch
+    against uint32 arrays — suffix every constant 'u32), and `block` is
+    a keyword (cannot be a param name: "expected closing ')'").
