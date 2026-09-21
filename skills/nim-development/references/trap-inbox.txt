@@ -48,3 +48,14 @@ so promotion is a verify-then-move, not a rewrite.
     unsuffixed hex literals > 0x7FFFFFFF infer int64 (type mismatch
     against uint32 arrays — suffix every constant 'u32), and `block` is
     a keyword (cannot be a param name: "expected closing ')'").
+
+## [tables-index] Exported Table-typed aliases still need std/tables at the use site
+- Error: `type mismatch: Expression: t[key] ... t: TomlTable, key: string`
+  with only system `[]` candidates — when a module exports
+  `type TomlTable* = Table[string, TomlValue]` (RRM src/io.nim) and you
+  index it from another module importing only that module.
+- Cause: `Table`'s `[]` comes from std/tables; the defining module's
+  internal `import std/tables` is not re-exported, so the alias reaches
+  you without the operator.
+- Fix: `import std/tables` at the use site (RRM tools/intent_toml.nim,
+  hit 2026-09-21, Nim 2.2.4).
