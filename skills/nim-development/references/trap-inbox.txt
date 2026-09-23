@@ -81,3 +81,13 @@ Fix: never rely on implicit `result` or `newSeq` for objects whose
 fields carry semantic default values — assign `result = TypeName(...)`
 (constructors DO apply defaults) or stamp elements explicitly after
 allocation.
+
+[init] extends the "[init] implicit `result` and `newSeq[T]` zero-fill" entry (candidate):
+the loadScenario recurrence — a `proc loadScenario(...): Scenario` whose
+record declares `policySigmaScale*: float = 1.0` silently produced 0.0
+for the absent-key path (implicit result zero-fill), making "declared
+1.0" differ from "absent". Symptom surfaced only as a seeded-simulation
+behavior split (absent-scale runs deterministic, σ_eff = trait × 0.0).
+Fix pattern: stamp EVERY defaulted scenario field explicitly beside
+`result = ...` constructions (the RoadWidths() precedent in the same
+proc) — field defaults on the record type never run for implicit result.
