@@ -59,3 +59,25 @@ so promotion is a verify-then-move, not a rewrite.
   you without the operator.
 - Fix: `import std/tables` at the use site (RRM tools/intent_toml.nim,
   hit 2026-09-21, Nim 2.2.4).
+
+[init] implicit `result` and `newSeq[T]` zero-fill objects — field default values are NOT applied
+extends the [init] default-initialization surface (candidate, Nim 2.2.4):
+two distinct zero-fill paths silently skip `field: T = value` defaults on
+object types, leaving sentinel fields at 0.0 instead of the declared
+sentinel.
+```nim
+type Ask = object
+  p: float = -1.0   # sentinel: negative = absent
+proc mk(): Ask =
+  result.y = 5.0    # implicit result: p reads 0.0 (!)
+proc mk2(): Ask = Ask(y: 5.0)  # constructor: p reads -1.0 (correct)
+let s = newSeq[Ask](1)          # s[0].p reads 0.0 (!)
+s[0] = Ask()                    # explicit stamp: -1.0 (correct)
+```
+Symptom seen: a "default-absent" flag read PRESENT everywhere, silently
+zeroing every downstream value; in a simulation loop it presented as a
+never-terminating run with exploding memory (state never advanced).
+Fix: never rely on implicit `result` or `newSeq` for objects whose
+fields carry semantic default values — assign `result = TypeName(...)`
+(constructors DO apply defaults) or stamp elements explicitly after
+allocation.
