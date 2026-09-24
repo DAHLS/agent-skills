@@ -91,3 +91,14 @@ behavior split (absent-scale runs deterministic, σ_eff = trait × 0.0).
 Fix pattern: stamp EVERY defaulted scenario field explicitly beside
 `result = ...` constructions (the RoadWidths() precedent in the same
 proc) — field defaults on the record type never run for implicit result.
+
+[init] `for x in [a, b]` iterates COPIES — mutation inside fails with "cannot be assigned to" (Nim 2.2.4)
+- extends the `[init] var x zero-fills` entry's family (value semantics).
+- Trap: wanting to set the same fields on two var objects, wrote
+  `for st in [st1, st2]: st.params[0] = k` — arrays/seqs are value
+  types, the loop variable is a copy.
+- Symptom: `Error: 'st.params[0]' cannot be assigned to` at the
+  assignment, not at the loop.
+- Fix: assign each object directly (`st1.params[0] = k; st2.params[0] = k`),
+  or iterate `for st in [addr st1, addr st2]: st[].params[0] = k`.
+- Hit in unittest setup code; verified on Nim 2.2.4.
