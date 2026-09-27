@@ -102,3 +102,10 @@ proc) — field defaults on the record type never run for implicit result.
 - Fix: assign each object directly (`st1.params[0] = k; st2.params[0] = k`),
   or iterate `for st in [addr st1, addr st2]: st[].params[0] = k`.
 - Hit in unittest setup code; verified on Nim 2.2.4.
+
+[footgun] `sorted` needs `import std/algorithm`; not auto-imported (Nim 2.2.4)
+extends the `split`/`sqrt` std-import entries. Using `sorted(s)` in a test
+file importing only os/unittest/strutils/sequtils/math gives:
+  Error: undeclared identifier: 'sorted'
+Fix: `import std/algorithm`, or avoid the call (e.g. assert `s[0] < s[1]`
+when the seq is short and order is the only question).
