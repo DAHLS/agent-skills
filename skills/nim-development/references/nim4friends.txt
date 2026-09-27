@@ -1156,3 +1156,38 @@
   Fix:
     if "name" in t:
       for e in t["name"]: ...
+
+[build] `--styleChecks:error` is invalid — the value-taking flag is singular `--styleCheck` (Nim 2.2.4)
+  The plural `--styleChecks` only accepts on/off; giving it a value fails
+  before any file is read:
+    command line(1, 2) Error: 'on' or 'off' expected, but 'error' found
+  Fix: `--styleCheck:error` (singular; takes :error/:hint/:usages).
+  `--styleChecks:on|off` is the legacy boolean form. Same flag as the
+  `nim check --styleCheck:error` single-file entry.
+
+[modules] Exported `Table`-typed aliases still need `import std/tables` at the use site (Nim 2.2.4)
+  A module that does `import std/tables` and exports
+  `type MyTable* = Table[string, MyValue]` does NOT re-export the import:
+  indexing the alias from a second module that imports only the first
+  fails with
+    type mismatch: Expression: t[key] ... t: MyTable, key: string
+  and the candidate list offers only system `[]` overloads — no Table
+  one. The type reaches you; the operator does not. Fix: `import
+  std/tables` at the use site as well.
+
+[footgun] `for x in [a, b]` iterates copies — mutating the loop var fails: 'cannot be assigned to' (Nim 2.2.4)
+  Value-semantics kin of the `[init] var x zero-fills` entry. Setting the
+  same field on several var objects via `for st in [st1, st2]:
+  st.params[0] = k` does not compile — arrays/seqs are value types and
+  the loop variable is a copy:
+    Error: 'st.params[0]' cannot be assigned to
+  raised at the assignment, not at the loop. Fix: assign each object
+  directly (`st1.params[0] = k; st2.params[0] = k`), or iterate pointers:
+    for st in [addr st1, addr st2]: st[].params[0] = k
+
+[footgun] `sorted` needs `import std/algorithm`; not auto-imported (Nim 2.2.4)
+  Extends the `split`/`sqrt` std-import entries. Using `sorted(s)` in a
+  test file importing only os/unittest/strutils/sequtils/math gives:
+    Error: undeclared identifier: 'sorted'
+  Fix: `import std/algorithm`, or avoid the call when the seq is short
+  and order is the only question (assert `s[0] < s[1]` instead).
