@@ -19,93 +19,36 @@ so promotion is a verify-then-move, not a rewrite.
 ---
 
 [build] `--styleChecks:error` is invalid — the value-taking flag is singular `--styleCheck` (Nim 2.2.4)
-  Trap: the plural `--styleChecks` only accepts on/off. Passing
-  `--styleChecks:error` fails before any file is read:
-  `command line(1, 2) Error: 'on' or 'off' expected, but 'error' found`
+  The plural `--styleChecks` only accepts on/off; giving it a value fails
+  before any file is read:
+    command line(1, 2) Error: 'on' or 'off' expected, but 'error' found
   Fix: `--styleCheck:error` (singular; takes :error/:hint/:usages).
-  `--styleChecks:on|off` is the legacy boolean form. (Hit while
-  re-running a compile with the checker flag; cost a compile cycle.)
+  `--styleChecks:on|off` is the legacy boolean form. Same flag as the
+  `nim check --styleCheck:error` single-file entry.
 
-[nimble] a `.nimble` file named `pkg.nimble` is rejected — and the error prints a raw `$1` placeholder (nimble 0.18.2)
-  Trap: the .nimble filename IS the package name, and nimble rejects
-  package names ending with "pkg". Every nimble command in the project
-  fails with:
-  `Error: "$1" is an invalid package name: cannot end with "pkg"`
-  — the unformatted `$1` placeholder looks like a nimble bug and hides
-  which name offended. Fix: rename the file to the real package name
-  (e.g. `mypkg.nimble`).
+[modules] Exported `Table`-typed aliases still need `import std/tables` at the use site (Nim 2.2.4)
+  A module that does `import std/tables` and exports
+  `type MyTable* = Table[string, MyValue]` does NOT re-export the import:
+  indexing the alias from a second module that imports only the first
+  fails with
+    type mismatch: Expression: t[key] ... t: MyTable, key: string
+  and the candidate list offers only system `[]` overloads — no Table
+  one. The type reaches you; the operator does not. Fix: `import
+  std/tables` at the use site as well.
 
-- id: candidate-sha256-round-rotation-2026-09-20
-  apis: [manual uint32 round loop, rotr]
-  error: hand-written SHA-256 produced consistently wrong digests (e.g.
-    sha256Hex("abc") = "2c767a4b..." instead of "ba7816bf..."), no compile
-    error — silently wrong.
-  lesson: in the working-var rotation `hh = f; f = e; ...` one shift is
-    missing — new h must receive OLD g: `hh = g; g = f; f = e; e = d + t1;
-    d = c; c = b; b = a; a = t1 + t2`. Debug by porting the suspect loop
-    verbatim to Python and diffing against hashlib — a matching wrong
-    answer proves the transcription, isolating the algorithm bug. Also:
-    unsuffixed hex literals > 0x7FFFFFFF infer int64 (type mismatch
-    against uint32 arrays — suffix every constant 'u32), and `block` is
-    a keyword (cannot be a param name: "expected closing ')'").
-
-## [tables-index] Exported Table-typed aliases still need std/tables at the use site
-- Error: `type mismatch: Expression: t[key] ... t: TomlTable, key: string`
-  with only system `[]` candidates — when a module exports
-  `type TomlTable* = Table[string, TomlValue]` (RRM src/io.nim) and you
-  index it from another module importing only that module.
-- Cause: `Table`'s `[]` comes from std/tables; the defining module's
-  internal `import std/tables` is not re-exported, so the alias reaches
-  you without the operator.
-- Fix: `import std/tables` at the use site (RRM tools/intent_toml.nim,
-  hit 2026-09-21, Nim 2.2.4).
-
-[init] implicit `result` and `newSeq[T]` zero-fill objects — field default values are NOT applied
-extends the [init] default-initialization surface (candidate, Nim 2.2.4):
-two distinct zero-fill paths silently skip `field: T = value` defaults on
-object types, leaving sentinel fields at 0.0 instead of the declared
-sentinel.
-```nim
-type Ask = object
-  p: float = -1.0   # sentinel: negative = absent
-proc mk(): Ask =
-  result.y = 5.0    # implicit result: p reads 0.0 (!)
-proc mk2(): Ask = Ask(y: 5.0)  # constructor: p reads -1.0 (correct)
-let s = newSeq[Ask](1)          # s[0].p reads 0.0 (!)
-s[0] = Ask()                    # explicit stamp: -1.0 (correct)
-```
-Symptom seen: a "default-absent" flag read PRESENT everywhere, silently
-zeroing every downstream value; in a simulation loop it presented as a
-never-terminating run with exploding memory (state never advanced).
-Fix: never rely on implicit `result` or `newSeq` for objects whose
-fields carry semantic default values — assign `result = TypeName(...)`
-(constructors DO apply defaults) or stamp elements explicitly after
-allocation.
-
-[init] extends the "[init] implicit `result` and `newSeq[T]` zero-fill" entry (candidate):
-the loadScenario recurrence — a `proc loadScenario(...): Scenario` whose
-record declares `policySigmaScale*: float = 1.0` silently produced 0.0
-for the absent-key path (implicit result zero-fill), making "declared
-1.0" differ from "absent". Symptom surfaced only as a seeded-simulation
-behavior split (absent-scale runs deterministic, σ_eff = trait × 0.0).
-Fix pattern: stamp EVERY defaulted scenario field explicitly beside
-`result = ...` constructions (the RoadWidths() precedent in the same
-proc) — field defaults on the record type never run for implicit result.
-
-[init] `for x in [a, b]` iterates COPIES — mutation inside fails with "cannot be assigned to" (Nim 2.2.4)
-- extends the `[init] var x zero-fills` entry's family (value semantics).
-- Trap: wanting to set the same fields on two var objects, wrote
-  `for st in [st1, st2]: st.params[0] = k` — arrays/seqs are value
-  types, the loop variable is a copy.
-- Symptom: `Error: 'st.params[0]' cannot be assigned to` at the
-  assignment, not at the loop.
-- Fix: assign each object directly (`st1.params[0] = k; st2.params[0] = k`),
-  or iterate `for st in [addr st1, addr st2]: st[].params[0] = k`.
-- Hit in unittest setup code; verified on Nim 2.2.4.
+[footgun] `for x in [a, b]` iterates copies — mutating the loop var fails: 'cannot be assigned to' (Nim 2.2.4)
+  Value-semantics kin of the `[init] var x zero-fills` entry. Setting the
+  same field on several var objects via `for st in [st1, st2]:
+  st.params[0] = k` does not compile — arrays/seqs are value types and
+  the loop variable is a copy:
+    Error: 'st.params[0]' cannot be assigned to
+  raised at the assignment, not at the loop. Fix: assign each object
+  directly (`st1.params[0] = k; st2.params[0] = k`), or iterate pointers:
+    for st in [addr st1, addr st2]: st[].params[0] = k
 
 [footgun] `sorted` needs `import std/algorithm`; not auto-imported (Nim 2.2.4)
-extends the `split`/`sqrt` std-import entries. Using `sorted(s)` in a test
-file importing only os/unittest/strutils/sequtils/math gives:
-  Error: undeclared identifier: 'sorted'
-Fix: `import std/algorithm`, or avoid the call (e.g. assert `s[0] < s[1]`
-when the seq is short and order is the only question).
+  Extends the `split`/`sqrt` std-import entries. Using `sorted(s)` in a
+  test file importing only os/unittest/strutils/sequtils/math gives:
+    Error: undeclared identifier: 'sorted'
+  Fix: `import std/algorithm`, or avoid the call when the seq is short
+  and order is the only question (assert `s[0] < s[1]` instead).
