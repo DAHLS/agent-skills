@@ -17,3 +17,18 @@ inline indented snippets — no fenced code blocks, no label scaffolding),
 so promotion is a verify-then-move, not a rewrite.
 
 ---
+
+[modules] Top-level routine used before its declaration → undeclared identifier
+Trap: at module scope Nim resolves symbols top-down — calling proc B from
+proc A's body fails with `Error: undeclared identifier: 'B'` when B's
+`proc` is written below A in the file (true even for plain non-generic
+procs; there is no implicit forward referencing).
+Symptom: `undeclared identifier: 'eventName'` / `'PostureClass'` at the
+call site, though the symbol exists later in the same module.
+Fix: move the callee above every caller (or add a forward declaration
+`proc foo*(x: T): R {.forward.}` — reordering is the idiomatic fix).
+Snippet:
+  proc eventName*(k: EventKind): string = ...   # must come FIRST
+  proc eventToJson*(e: Event): JsonNode =
+    result["kind"] = %(eventName(e.kind))       # now resolves
+(Nim 2.2.4, observed 2026-10-01.)
