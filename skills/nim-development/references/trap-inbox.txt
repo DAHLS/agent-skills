@@ -32,3 +32,15 @@ Snippet:
   proc eventToJson*(e: Event): JsonNode =
     result["kind"] = %(eventName(e.kind))       # now resolves
 (Nim 2.2.4, observed 2026-10-01.)
+
+[idiom] `@[]` literals in a call to an openArray[T]/typed param → type
+mismatch "seq[empty]"
+Trap: passing bare `@[]` for a `seq[WindLineSlot]`/typed parameter makes
+the literal infer `seq[empty]` and the call fails with
+`Error: type mismatch ... [1] @[]: seq[empty]` (the element type cannot
+propagate INTO the literal from an overloaded proc's params).
+Symptom: the "Expected one of" block lists the right overload with the
+literal slot mismatched at its position.
+Fix: bind an explicitly-typed empty first (`var wsl: seq[WindLineSlot]`
+then pass `wsl`), or write `@[].seq[WindLineSlot]`.
+(Nim 2.2.4, observed 2026-10-01; test-side call, one compile cycle.)
