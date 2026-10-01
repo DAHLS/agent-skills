@@ -44,3 +44,12 @@ literal slot mismatched at its position.
 Fix: bind an explicitly-typed empty first (`var wsl: seq[WindLineSlot]`
 then pass `wsl`), or write `@[].seq[WindLineSlot]`.
 (Nim 2.2.4, observed 2026-10-01; test-side call, one compile cycle.)
+
+[proc-const-array] A `const` array literal inside a proc that references a
+PROC PARAMETER fails with: `Error: cannot evaluate at compile time:
+distKm`. Seen on Nim 2.2.4 building a fixture Route:
+`const w = [WeatherPoint(distKm: distKm, ...)]` inside
+`proc flatRoute(distKm: float)` — the literal looks static but binds the
+runtime param. Fix: `let w = [...]` (or hoist the constant out). Cousin of
+the implicit-result/no-defaults class: anything spelled `const` is a
+compile-time demand on every referenced name.
