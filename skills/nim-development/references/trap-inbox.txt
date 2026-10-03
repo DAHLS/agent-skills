@@ -53,3 +53,23 @@ distKm`. Seen on Nim 2.2.4 building a fixture Route:
 runtime param. Fix: `let w = [...]` (or hoist the constant out). Cousin of
 the implicit-result/no-defaults class: anything spelled `const` is a
 compile-time demand on every referenced name.
+
+[orc] `defer` in a proc returning a string-keyed `Table` corrupts the
+returned keys (Nim 2.2.4, --mm:orc default)
+Trap: a proc that builds a `Table[string, TomlValue]` (via repeated
+`t[k] = v` from parsed line slices) and also carries `defer:
+removeFile(path)` returns a table whose key strings are garbage on
+lookup — `in`/`[]` miss keys that echo back with trailing bytes
+(`KEY:pull_shape .`, `KEY:food_cho_g e_min.`), duplicated entries, and
+dependent `both keys required` logic misfires. Silent: no crash, no
+error; lookups just fail.
+Symptom: the SAME parse call passes at top level / in a defer-free
+proc / under `--mm:refc`, and fails only in the defer-carrying proc
+under orc/arc. Import-set sensitive (inlining changes whether the
+buggy destructor ordering fires).
+Fix: drop the `defer` from the table-building proc (do cleanup at the
+call site, or reuse one overwritten temp file), or return a copy built
+after the defer scope. Verified minimal: removing the single `defer`
+line flips the run from corrupted keys to clean (orc); arc also
+corrupts, refc clean.
+(Nim 2.2.4, observed 2026-10-03; unit-test helper, ~1 h of diagnosis.)
