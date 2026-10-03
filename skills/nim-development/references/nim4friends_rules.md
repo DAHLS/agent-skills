@@ -5,7 +5,8 @@ projects, maintained across many LLM sessions and models.
 
 ## Reading
 
-Read this file in full — it is short and stable.
+SKILL.md carries the reading protocol (the titles pass) verbatim; this file
+remains its spec. Read this file in full before writing or editing an entry.
 
 Then, before writing any Nim in this session: run
 `grep -n '^\[' nim4friends.txt` and read all title lines. This titles

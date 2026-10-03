@@ -11,12 +11,20 @@ risk: safe
 > with sparse, version-fragmented docs.
 > **Verify against primary sources — do not trust stale priors.**
 
-**Read `references/nim4friends_rules.md` in full before anything else —
-mandatory.** It governs how you read the canon (`nim4friends.txt`) and
-where candidates go (`trap-inbox.txt`). All three ship in the same repo as
-this skill — **do not assume the entries file is empty**. This skill does
-not repeat those entries; it complements them with decision-making and a
-way to learn *new* traps correctly.
+**Before writing any Nim this session: run
+`grep -n '^\[' ~/.agents/skills/nim-development/references/nim4friends.txt`
+and read all title lines. Titles are the awareness layer — this pass is
+mandatory.** Read an entry body only when a title touches your task, or
+while debugging (grep by `[tag]` and error text). Never read
+`nim4friends.txt` in full.
+
+When recording a lesson (see [Recording lessons](#recording-lessons-mandatory)),
+first read `references/nim4friends_rules.md` in full — it governs how you
+read the canon (`nim4friends.txt`) and where candidates go
+(`trap-inbox.txt`). All three ship in the same repo as this skill — **do
+not assume the entries file is empty**. This skill does not repeat those
+entries; it complements them with decision-making and a way to learn *new*
+traps correctly.
 
 **And, non-negotiably, feed lessons back into it** — see
 [Recording lessons](#recording-lessons-mandatory). The value of this file
@@ -341,8 +349,8 @@ Nim 2.2.4 — full evidence in the `[build]`/`[footgun]` entries of
 
 ## Decision checklist
 
-- [ ] Read `nim4friends_rules.md` in full (mandatory); accessed
-      `nim4friends.txt` per its reading rules?
+- [ ] Ran the titles pass over `nim4friends.txt` (`grep -n '^\[' …`,
+      read all title lines) before writing Nim?
 - [ ] Confirmed the target Nim version?
 - [ ] Verified any uncertain API against a primary source (docs/source/tests — or a minimal `nim c -r` probe when the question is what template/macro code does at runtime)?
 - [ ] Vetted the chosen library's liveness + Nim-version fit (§6)?
