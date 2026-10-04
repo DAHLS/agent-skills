@@ -73,3 +73,27 @@ after the defer scope. Verified minimal: removing the single `defer`
 line flips the run from corrupted keys to clean (orc); arc also
 corrupts, refc clean.
 (Nim 2.2.4, observed 2026-10-03; unit-test helper, ~1 h of diagnosis.)
+
+[types] Heterogeneous array branches + `array & array` both fail where seqs work (Nim 2.2.4)
+Candidate added 2026-10-04 by a subagent session (RRM collections-seam).
+
+Two related type-mismatch traps in one session, both against exported
+`const ... = ["a", "b"]` arrays from a library:
+
+1. `let allow = if kind == "r": riderMetaKeys else: routeMetaKeys`
+   where both consts are `const x = [...]` arrays of DIFFERENT lengths
+   (`array[0..6, string]` vs `array[0..3, string]`) ->
+   `Error: type mismatch: got 'array[0..3, string]' for 'routeMetaKeys'
+   but expected 'array[0..6, string]'`. An if-expression needs ONE
+   result type; fixed-length arrays of different sizes don't unify.
+   Fix: annotate as seq — `let allow: seq[string] = if ...: @riderMetaKeys
+   else: @routeMetaKeys`.
+
+2. `riderTunableKeys & physiologyKeys` where both are const arrays
+   (`array[0..4, string] & array[0..5, string]`) -> type mismatch against
+   every `&` overload. The `&` that joins collections is seq-only.
+   Fix: `var s: seq[string] = @riderTunableKeys; s.add physiologyKeys`.
+
+Lesson: treat exported `const [...]` arrays as read-only iteration
+surfaces; the moment you branch on them or concatenate them, convert to
+seq with `@` explicitly (or type the target `seq[string]`).
