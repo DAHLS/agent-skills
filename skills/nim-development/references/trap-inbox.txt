@@ -112,3 +112,16 @@ seq with `@` explicitly (or type the target `seq[string]`).
   'copyFileWithPermission'
   std/os exports `copyFileWithPermissions` (plural — src, dest, options)
   and `copyFile` (src, dest). Singular-s spelling is a compile error.
+
+[build] Stale nimcache links with "undefined reference"/"hidden symbol isn't defined" after src or compiler updates (Nim 2.2.12)
+  Symptom: `nim c -r tests/foo.nim` compiles every module but the final
+  gcc link fails:
+    /usr/bin/ld.bfd: @mfoo.nim.c:(.text+0x3819): undefined reference to `eqdestroy___OOZsrcZio_u19121'
+    /usr/bin/ld.bfd: hidden symbol `eqsink___OOZsrcZio_u999' isn't defined
+    final link failed: bad value
+  Cause: ~/.cache/nim/<exeName>_d still holds .o files generated against
+  a different version of an imported module (here src/io.nim changed
+  upstream; the per-exe default cache dir is keyed by OUTPUT name, so a
+  test not rebuilt since the change has a fully stale cache).
+  Fix: rm -rf ~/.cache/nim/<exeName>_d (or all of them) and rebuild —
+  not a code error; do not chase the missing symbols in source.
