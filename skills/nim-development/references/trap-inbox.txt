@@ -97,3 +97,18 @@ Two related type-mismatch traps in one session, both against exported
 Lesson: treat exported `const [...]` arrays as read-only iteration
 surfaces; the moment you branch on them or concatenate them, convert to
 seq with `@` explicitly (or type the target `seq[string]`).
+
+[exn] `except A, B as e:` does not compile — bind a name per type (Nim 2.2.12)
+  A multi-type except clause cannot attach ONE `as e` binding after a
+  type list:
+    except IOError, OSError as e:   # Error: undeclared identifier: 'as'
+  Fix: bind per type (`except IOError as e, OSError as e:`), or drop the
+  binding and use getCurrentExceptionMsg():
+    except IOError, OSError:
+      stderr.writeLine getCurrentExceptionMsg()
+
+[os] `copyFileWithPermission` does not exist — it is `copyFileWithPermissions` (or plain `copyFile`) (Nim 2.2.12)
+  Symptom: tests/test_x.nim(37, 5) Error: undeclared identifier:
+  'copyFileWithPermission'
+  std/os exports `copyFileWithPermissions` (plural — src, dest, options)
+  and `copyFile` (src, dest). Singular-s spelling is a compile error.
