@@ -125,3 +125,21 @@ seq with `@` explicitly (or type the target `seq[string]`).
   test not rebuilt since the change has a fully stale cache).
   Fix: rm -rf ~/.cache/nim/<exeName>_d (or all of them) and rebuild —
   not a code error; do not chase the missing symbols in source.
+[idiom] `lent T` is invalid as a proc PARAMETER type — return-position only (Nim 2.2.4)
+Trap: trying to borrow a large object argument with `proc f(x: lent T): R`
+fails to compile; `lent` exists for return types and cursor-ish bindings,
+never in a parameter list. Even `--experimental:views` doesn't enable it.
+Symptom: `Error: invalid type: 'lent T' in this context: 'proc (x: lent T): R' for proc`
+Fix: under ORC/ARC a never-mutated object param with hooks (seq fields) is
+already passed as a pointer in the generated C with no call-site copy —
+leave the plain `T` param and instead remove the real copies: closure
+captures of the param (each capture = a full deep copy per call; restructure
+the nested proc to take it as a parameter) and whole-value `let y = obj.field`
+copies (use `let y {.cursor.} = obj.field` or indexed reads). Verified in
+generated C: callers pass their own `tyObject_X*` param slot straight
+through, zero `eqcopy` calls.
+```nim
+proc f(x: BigObj): R =          # NOT `lent BigObj`
+  proc helper(x: BigObj; i: int): float = x.data[i]  # no capture = no env copy
+  helper(x, 3)                   # pointer pass, no copy
+```
