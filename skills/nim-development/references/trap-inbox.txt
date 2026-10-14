@@ -176,3 +176,20 @@ proc f(x: BigObj): R =          # NOT `lent BigObj`
   cursor binding; outputs byte-identical before/after.
   Extends the lent-T inbox entry (the other hidden copy site it names).
   (Nim 2.2.4, observed 2026-10-14.)
+
+[footgun] seq doubling growth rides ~2x capacity in RSS — preallocate with newSeqOfCap when a seq's final size is estimable
+  Trap: many small `add`s into a seq of large payloads keep capacity
+  at up to 2x used (each doubling also memcpys the whole array). With
+  per-entity seqs growing in parallel (N riders x M rows each) the
+  watermark dominates peak RSS: measured 1.25 GB of live rows peaking
+  at 2.19 GB resident (176 seqs); the realloc memcpys cost ~2x total
+  volume over the run.
+  Symptom: peak RSS ~= 2x the data; RSS jumps late ("+585 MB while
+  finishing") as seqs cross thresholds together.
+  Fix: `newSeqOfCap[T](cap)` where cap ~ the expected final length
+  (generously — untouched capacity is malloc'd virtual space that
+  never faults into RSS until written; overshoot is free). Verified:
+  peak 2.19 -> 1.74 GB, wall-neutral, outputs byte-identical.
+  NOTE `setCap` does not exist in 2.2.4 (probe-verified compile
+  error); `newSeqOfCap` at construction is the standard equivalent.
+  (Nim 2.2.4, observed 2026-10-14.)
