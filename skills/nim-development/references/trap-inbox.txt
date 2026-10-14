@@ -144,3 +144,35 @@ proc f(x: BigObj): R =          # NOT `lent BigObj`
   proc helper(x: BigObj; i: int): float = x.data[i]  # no capture = no env copy
   helper(x, 3)                   # pointer pass, no copy
 ```
+
+[footgun] A nested proc capturing a big object param deep-copies it into the closure env — every enclosing call
+  Trap: `proc outer(o: BigObj) = ... proc inner(): R = use(o)` — the
+  closure's environment materializes the captured param BY VALUE: under
+  ORC/ARC that runs the object's generated `=` (deep copy of every seq
+  field) per enclosing-proc invocation, silently, even though the param
+  itself was passed copy-free.
+  Symptom: `eqcopy___<Module>_<n>` dominating a profile inside a proc
+  whose params are "just read" — megabytes copied to touch a few fields.
+  Verify: nimcache C (`@m<module>.nim.c`) shows the eqcopy inside the
+  closure-env builder; removing the capture removes the symbol.
+  Fix: capture-free nested proc — pass what it needs as a param (a
+  never-mutated hooked-object param travels by pointer, no copy):
+    proc inner(o: BigObj; i: int): float = o.data[i]
+    inner(o, 3)
+  Extends the lent-T inbox entry (param passing itself is already
+  copy-free under ORC — this is where the copies actually were).
+  (Nim 2.2.4, observed 2026-10-14: this trap was ~99% of a 167-min run;
+  removing it ran the same job in 51 s, outputs byte-identical.)
+
+[footgun] `let y = obj.field` on a field whose type carries seq members deep-copies every member — `{.cursor.}` or index instead
+  Trap: binding a container-typed field to read a few elements
+  (`let col = cols[i]` shape) invokes the field type's generated `=`:
+  each member seq is fully copied before the indexed reads happen.
+  Symptom: `eqcopy___<FieldType>` (an `=` proc calling N seq-copiers)
+  high in the profile at a line that only reads `y[k]`-style.
+  Fix: `let y {.cursor.} = obj.field` (a borrow, no copy) or index the
+  field directly `obj.field[i]` at each use.
+  Verified: generated C shows the member eqcopy calls vanish with the
+  cursor binding; outputs byte-identical before/after.
+  Extends the lent-T inbox entry (the other hidden copy site it names).
+  (Nim 2.2.4, observed 2026-10-14.)
