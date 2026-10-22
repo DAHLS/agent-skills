@@ -193,3 +193,23 @@ proc f(x: BigObj): R =          # NOT `lent BigObj`
   NOTE `setCap` does not exist in 2.2.4 (probe-verified compile
   error); `newSeqOfCap` at construction is the standard equivalent.
   (Nim 2.2.4, observed 2026-10-14.)
+
+[posix] std/posix statvfs struct is `Statvfs`, not `Tstatvfs` (Nim 2.2.4)
+CANDIDATE (observed 2026-10-22, Nim 2.2.4, Linux)
+Trap: the statvfs wrapper exists in std/posix, but the struct type has no `T` prefix.
+Symptom:
+  import std/posix
+  var b: Tstatvfs
+  -> Error: undeclared identifier: 'Tstatvfs'
+     candidates (edit distance, scope distance): 'fstatvfs', 'statvfs'
+Fix:
+  import std/posix
+  var b: Statvfs
+  if statvfs(path, b) == 0:
+    echo b.f_bavail.int64 * b.f_frsize.int64, " bytes free"
+Notes: returns cint (0 = success). Field names keep C spelling (f_bavail, f_frsize).
+
+[footgun] extends the split/sqrt/parseInt strutils-family entries: `repeat` also needs `import std/strutils` (Nim 2.2.4)
+CANDIDATE (observed 2026-10-22, Nim 2.2.4)
+Symptom: `f.writeLine(repeat('x', 100000))` -> Error: undeclared identifier: 'repeat'
+Fix: `import std/strutils` — same class as the split/join/sqrt entries; std/strutils is never auto-imported.
