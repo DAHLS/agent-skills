@@ -213,3 +213,11 @@ Notes: returns cint (0 = success). Field names keep C spelling (f_bavail, f_frsi
 CANDIDATE (observed 2026-10-22, Nim 2.2.4)
 Symptom: `f.writeLine(repeat('x', 100000))` -> Error: undeclared identifier: 'repeat'
 Fix: `import std/strutils` — same class as the split/join/sqrt entries; std/strutils is never auto-imported.
+
+[math] `copysign` compiles but fails `--styleCheck:error` — the std/math name is `copySign` (Nim 2.2.4)
+Calling std/math's copysign(x, y) works at compile time (Nim's
+style-insensitive matching binds it), so the wrong spelling ships silently —
+until `nim check --styleCheck:error`:
+  Error: 'copysign' should be: 'copySign' [func declared in .../lib/pure/math.nim]
+Fix: spell it `copySign`. Same class as the `normalize` shadow entry: trust
+the declared identifier, not your C-muscle-memory spelling.
