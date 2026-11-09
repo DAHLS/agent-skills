@@ -221,3 +221,26 @@ until `nim check --styleCheck:error`:
   Error: 'copysign' should be: 'copySign' [func declared in .../lib/pure/math.nim]
 Fix: spell it `copySign`. Same class as the `normalize` shadow entry: trust
 the declared identifier, not your C-muscle-memory spelling.
+
+[math] `nextafter` does NOT exist in std/math (Nim 2.2.4) — despite the
+name being familiar from C. `import std/math` then calling it:
+Error: undeclared identifier: 'nextafter'
+Fix: implement it locally via uint64 bit increments:
+  proc nextafter(x, y: float): float =
+    if x == y or classify(x) == fcNaN or classify(y) == fcNaN: return x + y
+    if x == 0.0: return if y > 0.0: 5e-324 else: -5e-324
+    let up = y > x
+    var b = cast[uint64](x)
+    if (x > 0.0) == up: inc b else: dec b
+    cast[float](b)
+(session 2026-11-09, probe code, Nim 2.2.4)
+
+[idiom] A proc literal passed to `sort` cannot capture a `var` object
+parameter (Nim 2.2.4):
+  Error: 'c' is of type <Cfg> which cannot be captured as it would
+  violate memory safety ... Consider using a <ref T> which can be captured.
+This is NOT the closure-can-capture rule for `var T` locals — it fires
+for `proc f(c: var Cfg)` whose sort comparator reads `c`. Fix: sort a
+seq of key tuples with the default `system.cmp[T]` (no capture), e.g.
+encode ties INTO the tuple key instead of a custom comparator.
+(session 2026-11-09, Nim 2.2.4)
