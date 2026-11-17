@@ -344,3 +344,20 @@ not stream-portable).
   Error: cannot access local variable `indent` from another routine
 Each has a one-line workaround; see RRM nimony-test branch for in-situ forms.
 (session 2026-11-17, Nimony 0.6.3)
+
+[nimony] Template bodies are checked context-free: no raise and no raises-proc CALL works inside a template, regardless of the enclosing proc's {.raises.} (Nimony 0.6.3)
+  Error: `raise` only allowed within a routine with `raises` pragma / cannot call a routine marked as `.raises` outside of a `try`..`except` block — from INSIDE a template instantiated in a canRaise proc
+Workarounds used: non-raising variant procs (clamp instead of defensive raise)
+for in-template sampling; whole-body try/except ErrorCode -> fail() for
+stdlib ErrorCode raisers (tables.[], readFile, writeFile, parsecsv). Also:
+nimony resolves template bodies eagerly — use-before-decl of enclosing
+locals fails (hoist decls or param-ize; the documented {.feature: "untyped".}
+ICE'd on a 4.5k-line module).
+(session 2026-11-17, Nimony 0.6.3, RRM dual-compile port)
+
+[nimony] More port traps: std/posix is a DIRECTORY (posix.nim inside); nimony lacks statvfs entirely; readFile/writeFile need import std/syncio explicitly (nim2 got them transitively); tables.[] is {.raises.} ErrorCode — ErrorCode cannot escape a raises-RefType proc ("nothing converts one into the other") (Nimony 0.6.3)
+Each cost a compile cycle to find; whole-arm gating or -1 "unobtainable"
+arms where the contract allows. A capture-free sort-comparator rewrite
+MUST preserve the tie-rule direction — the byte-oracle caught an
+inversion the test battery missed (orderBackToFront).
+(session 2026-11-17, Nimony 0.6.3)
