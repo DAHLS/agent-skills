@@ -313,3 +313,34 @@ default `./nimcache` build state — a warm default cache yields ~50 ms
 Also: a module that fails blocks its dependents — only the broken modules'
 jobs run, so a full-project timing of a non-compiling tree is impossible.
 (session 2026-11-17, Nimony 0.6.3)
+
+[nimony] Eager template resolution: bodies resolve at DECLARATION — use-before-decl of enclosing locals fails; hoist decls or add params (Nimony 0.6.3)
+  Error: undeclared identifier: 'orderPos' (a local DECLARED 400 lines after the template)
+nim2 templates resolve at instantiation; nimony eagerly. Nested templates referencing
+later-declared proc locals: hoist the decls above the template (pure allocs) or
+param-ize (state-dependent values). NOTE: {.feature: "untyped".} is the documented
+fix but ICE'd nimsem on a 4.5k-line module (index -1 IndexDefect) — hoisting
+avoided it. Template WRITES also don't satisfy the init checker.
+(session 2026-11-17, Nimony 0.6.3, RRM port)
+
+[nimony] `{.noinit.}` on a ref-containing var (CsvParser) is SIGSEGV under nim2/ORC — gate it compiler-side (Nimony 0.6.3)
+  var p {.noinit.}: CsvParser; p.open(path)  # works on nimony, CRASHES nim2+ORC
+noinit for nimony's init-checker must be `when defined(nimony)`-gated; float
+arrays are UB-free either way, ref-containing objects are not.
+(session 2026-11-17, nim 2.2.4 + Nimony 0.6.3)
+
+[nimony] stdlib gaps round 2: no unittest, no doAssert in assertions, no toHex in strutils, no countTrailingZeroBits (use firstSetBit-1), no seq.max in math, no gauss in random, no strutils.parseFloat(string) (Nimony 0.6.3)
+  Error: undeclared identifier: 'X' for each
+parseutils.parseFloat(openArray[char], var float64): int is the only float parse
+(prefix parser — enforce full consumption for strutils semantics). rand(r, float)
+implementations DIFFER between compilers → RNG streams diverge (algorithm-portable,
+not stream-portable).
+(session 2026-11-17, Nimony 0.6.3)
+
+[nimony] More checker classes: int64 set literals rejected; expreval can't fold int(float-const); ptr nil-default params need `nil ptr T` (gated alias); module globals need {.feature: "assumeSync".}; Path is an object (path(s)/$d); closures banned (thread params or templates); `$` rejects char (Nimony 0.6.3)
+  Error: type int64 is too large to be a set element type (x in {0,1,5})
+  Error: cannot evaluate expression at compile time: int64(constFloat)
+  Error: unsynchronized access to global variable 'x'
+  Error: cannot access local variable `indent` from another routine
+Each has a one-line workaround; see RRM nimony-test branch for in-situ forms.
+(session 2026-11-17, Nimony 0.6.3)
