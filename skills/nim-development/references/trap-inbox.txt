@@ -244,3 +244,72 @@ for `proc f(c: var Cfg)` whose sort comparator reads `c`. Fix: sort a
 seq of key tuples with the default `system.cmp[T]` (no capture), e.g.
 encode ties INTO the tuple key instead of a custom comparator.
 (session 2026-11-09, Nim 2.2.4)
+
+[nimony] Branch-conditional field write on implicit `result` → "cannot prove that result has been initialized [pass --verbose for the Final IR]" (Nimony 0.6.3)
+Writing `result.f = x` where the write sits inside an `if`/`else` branch (and
+`result` has not been whole-initialized yet) is rejected, even when every
+field is assigned on every path before any read. Unconditional field writes
+pass. Nim 2 compiles the same code fine.
+  proc f(x: float): T =
+    if x == 0.0: result.a = 1.0   # Error: cannot prove that result has been initialized
+    else:        result.a = 2.0
+    result.b = result.a + 3.0
+Fix: initialize first — `result = T()` (or `default(T)`) before the branch.
+Probe-verified 0.6.3: without it 2 errors; with it 0 errors, binary runs.
+(session 2026-11-17, Nimony 0.6.3)
+
+[nimony] `echo` is not in system — needs `import std/syncio` (Nimony 0.6.3)
+  t.nim(3, 1) Error: undeclared identifier: 'echo'
+Nimony's system.nim is minimal; `echo`, `stdout`, `writeFile`-style sync I/O
+live in std/syncio. Side trap: an unrelated error like this one can ABORT the
+deeper analysis phases — a module that "passes" the result-init check only
+because `echo` errored first is a false negative. Fix import AND re-check.
+(session 2026-11-17, Nimony 0.6.3)
+
+[nimony] Exception system is incompatible: `raise` needs `{.raises.}`, `newException` maps to `ErrorCode`, `CatchableError` absent (Nimony 0.6.3)
+  Error: `raise` only allowed within a routine with `raises` pragma
+  newException(ValueError, "...") → [1] expected: typedesc[T] but got: ErrorCode
+  Error: undeclared identifier: CatchableError
+Nimony uses an ErrorCode-enum model (doc/differences.md), not Nim's exception
+classes. Nim-2 error paths (`raise newException(E, msg)`, `except
+CatchableError as e: e.msg`) do not port mechanically; the error-handling
+strategy has to be redesigned (ErrorCode returns / {.raises.} annotations).
+(session 2026-11-17, Nimony 0.6.3)
+
+[nimony] std/json is a different API: JsonTree + toJson, no JsonNode surface (Nimony 0.6.3)
+  Error: undeclared identifier: 'newJFloat'   (also newJObject, newJArray, '%', '%*', toUgly)
+Nimony's json is built around `JsonTree` and `toJson(t, x, opts)` —
+`JsonNode`, `%`, `%*`, `newJObject`/`newJFloat`/`newJArray`, `toUgly`, `[]=`
+do not exist. JSON producers must be rewritten against JsonTree.
+(session 2026-11-17, Nimony 0.6.3)
+
+[nimony] std/xmltree + std/xmlparser do not exist; one missing module kills its whole import statement (Nimony 0.6.3)
+  Error: file not found: .../lib/std/xmltree.nim
+Only std/parsexml (low-level) exists. Trap: in `import std/[xmltree, strutils,
+math]`, the missing module makes ALL sibling symbols undeclared too —
+`parseFloat` errors point at strutils, masking the real cause. Read "file not
+found" lines first; the rest is cascade. Fix: parsexml-based reader.
+(session 2026-11-17, Nimony 0.6.3)
+
+[nimony] std/os no longer exports createDir — it lives in std/dirs and takes `Path` (Nimony 0.6.3)
+  Error: undeclared identifier: 'createDir'
+Nimony splits os: paths/dirs/envvars/appdirs are separate modules; dirs'
+`createDir(dir: Path)` takes the distinct Path type, not string. Other os
+symbols (and std/times) still resolve. Fix: `import std/dirs` + Path value.
+(session 2026-11-17, Nimony 0.6.3)
+
+[nimony] Named and unnamed tuples are NOT compatible (Nimony 0.6.3)
+  Error: type mismatch: got: seq[tuple[float64, float64]] but wanted:
+    seq[tuple[fStation: float64, halfWidth: float64]]
+Nim 2 ignores tuple field names in assignments; Nimony enforces them. A proc
+returning `@[(0.0, w), (L, w)]` for a named-tuple seq fails. Fix: construct
+named tuples explicitly: `@[(fStation: 0.0, halfWidth: w), ...]`.
+(session 2026-11-17, Nimony 0.6.3)
+
+[nimony] Timing trap: --nimcache redirect + warm default ./nimcache = bogus instant builds; DAG is fail-fast (Nimony 0.6.3)
+With `--nimcache:PATH` pointing at a fresh dir, nifmake still consults the
+default `./nimcache` build state — a warm default cache yields ~50 ms
+"builds" that did nothing. Cold measurements must move `./nimcache` aside.
+Also: a module that fails blocks its dependents — only the broken modules'
+jobs run, so a full-project timing of a non-compiling tree is impossible.
+(session 2026-11-17, Nimony 0.6.3)
